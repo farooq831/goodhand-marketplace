@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Clock, ShieldCheck, Store } from "lucide-react";
+import { AlertTriangle, ArrowRight, Clock, ShieldCheck, Store } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getMyVendorProfile } from "../api/vendorApi";
 import { NAV_BY_ROLE } from "../utils/dashboardNav";
@@ -20,6 +20,18 @@ function VendorStatusBanner() {
           <p className="text-sm opacity-80">Customers can't find you until your profile exists and an admin verifies it.</p>
         </div>
         <Link to="/dashboard/vendor/profile" className="button button--dark button--sm">Create profile</Link>
+      </div>
+    );
+  }
+  if (profile.verificationStatus === "changes_requested") {
+    return (
+      <div className="status-banner status-banner--error mb-6" role="alert">
+        <AlertTriangle size={20} aria-hidden="true" />
+        <div className="flex-1">
+          <p className="font-semibold">Action needed: update your profile</p>
+          <p className="text-sm opacity-80">Our team asked you to correct some details or documents before you can go live.</p>
+        </div>
+        <Link to="/dashboard/vendor/profile" className="button button--dark button--sm">See what to fix</Link>
       </div>
     );
   }

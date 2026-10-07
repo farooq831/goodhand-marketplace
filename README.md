@@ -32,7 +32,8 @@ Goodhand is a full-stack MERN marketplace that connects customers with local tut
 - Earnings dashboard showing held and released payments; reply to reviews
 
 **For admins**
-- Approve vendors and suspend or reactivate accounts
+- Review each vendor application (details, CNIC and documents) and approve it, or request specific corrections; the vendor is notified by email and resubmits
+- Suspend or reactivate accounts
 - Dispute queue: read the full chat and booking history, then release the payment or refund it, with a required note
 - Analytics: GMV, bookings by status, money held in escrow, commission, and recent transactions
 

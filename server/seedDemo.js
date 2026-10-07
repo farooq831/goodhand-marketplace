@@ -57,8 +57,17 @@ async function seed() {
   );
   await VendorProfile.findOneAndUpdate(
     { userId: pendingVendor._id },
-    { $setOnInsert: { userId: pendingVendor._id, businessName: "Sparkle Window Cleaning", category: "Cleaning", description: "Window and glass cleaning for homes and small offices.", isVerified: false, serviceArea: { city: "Lahore" } } },
+    { $setOnInsert: { userId: pendingVendor._id, businessName: "Sparkle Window Cleaning", category: "Cleaning", description: "Window and glass cleaning for homes and small offices.", isVerified: false, verificationStatus: "pending", reviewHistory: [{ action: "submitted", by: pendingVendor._id }], serviceArea: { city: "Lahore" } } },
     { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+  // Deliberately incomplete — CNIC back and CNIC number missing — so an
+  // admin can try "Request changes". Only filled in while still empty.
+  await VendorProfile.updateOne(
+    { userId: pendingVendor._id, "documents.0": { $exists: false } },
+    { $set: { documents: [
+      { type: "cnic_front", url: "https://placehold.co/600x380.png?text=CNIC+front+(sample)" },
+      { type: "business_proof", url: "https://placehold.co/600x380.png?text=Shop+photo+(sample)" },
+    ] } },
   );
   let tutoringListing;
   for (const service of services) {

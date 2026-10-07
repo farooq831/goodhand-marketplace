@@ -24,3 +24,7 @@ npm-debug.log*
 
 # Test output
 coverage/
+
+# Local dev artefacts
+server/uploads/
+server/dev-outbox/

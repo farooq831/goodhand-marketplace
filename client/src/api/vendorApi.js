@@ -20,8 +20,14 @@ export async function updateVendorProfile(id, data) {
   return res.data.vendorProfile;
 }
 
-export async function verifyVendor(id) {
-  const res = await apiClient.post(`/vendors/${id}/verify`);
+export async function verifyVendor(id, note = "") {
+  const res = await apiClient.post(`/vendors/${id}/verify`, { note });
+  return res.data.vendorProfile;
+}
+
+// items: CHANGE_ITEMS keys (utils/verification.js); note: free text for the vendor.
+export async function requestVendorChanges(id, { items, note }) {
+  const res = await apiClient.post(`/vendors/${id}/request-changes`, { items, note });
   return res.data.vendorProfile;
 }
 

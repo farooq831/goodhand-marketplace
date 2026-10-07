@@ -29,7 +29,16 @@ async function update(req, res, next) {
 
 async function verify(req, res, next) {
   try {
-    const profile = await vendorService.verifyVendor(req.params.id);
+    const profile = await vendorService.verifyVendor(req.params.id, req.user, req.body?.note);
+    res.json({ vendorProfile: profile });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function requestChanges(req, res, next) {
+  try {
+    const profile = await vendorService.requestChanges(req.params.id, req.user, req.body || {});
     res.json({ vendorProfile: profile });
   } catch (err) {
     next(err);
@@ -45,4 +54,4 @@ async function getMine(req, res, next) {
   }
 }
 
-module.exports = { create, getOne, update, verify, getMine };
+module.exports = { create, getOne, update, verify, requestChanges, getMine };

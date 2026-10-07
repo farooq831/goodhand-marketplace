@@ -35,7 +35,44 @@ const vendorProfileSchema = new mongoose.Schema(
         coordinates: { type: [Number], default: undefined }, // [lng, lat]
       },
     },
+    // Legacy untyped document URLs. Superseded by `documents`; the startup
+    // backfill (vendorService.backfillVerification) moves them across as
+    // type "other". Never exposed publicly.
     verificationDocs: { type: [String], default: [] },
+
+    // --- Verification (private: only the owner and admins ever see these) ---
+    cnicNumber: { type: String, trim: true, default: "" },
+    documents: {
+      type: [
+        {
+          type: { type: String, enum: ["cnic_front", "cnic_back", "business_proof", "other"], required: true },
+          url: { type: String, required: true },
+          uploadedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+    // pending → (changes_requested ⇄ pending) → approved. `isVerified` below
+    // stays the search-facing boolean and is true exactly when "approved".
+    verificationStatus: {
+      type: String,
+      enum: ["pending", "changes_requested", "approved"],
+      default: "pending",
+    },
+    // Append-only audit trail of the review conversation.
+    reviewHistory: {
+      type: [
+        {
+          action: { type: String, enum: ["submitted", "changes_requested", "resubmitted", "approved"], required: true },
+          items: { type: [String], default: [] }, // CHANGE_ITEMS keys, for changes_requested
+          note: { type: String, default: "" },
+          by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          at: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
     isVerified: { type: Boolean, default: false },
     avgRating: { type: Number, default: 0 },
     reviewCount: { type: Number, default: 0 },

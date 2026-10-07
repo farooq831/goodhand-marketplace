@@ -161,3 +161,13 @@ Drove the real app in headless Chrome (puppeteer, scratch `lsm_e2e` database) th
 - [x] `DEPLOYMENT.md` rewritten as a step-by-step Atlas → Render → Vercel guide with free-tier caveats; `SMTP_FROM` and `AUTO_COMPLETE_DAYS` added to `server/.env.example`
 - [x] Seed always provides a known-password customer and an unverified vendor (so every role and the admin verification queue are testable)
 - [x] Diagnosed the MongoDB outage: `mongod` crashed with **out of memory** (7.7 GB machine, uncapped WiredTiger cache) and Windows doesn't restart it. `scripts/fix-mongodb-windows.ps1` (run as admin) caps the cache at 1 GB, enables auto-restart, and starts the service
+
+## ✅ Vendor verification review (admin ⇄ vendor)
+
+- [x] `VendorProfile` gains `cnicNumber`, typed `documents` (cnic_front / cnic_back / business_proof / other), `verificationStatus` (pending → changes_requested ⇄ pending → approved) and an append-only `reviewHistory`. Startup backfill migrates legacy `verificationDocs` and sets status from `isVerified`
+- [x] Admin: queue split into "Needs review" / "Waiting on vendor", missing items flagged per row; `VendorReviewDrawer` shows owner + business details, CNIC number, document gallery (missing required docs shown as red slots), history; **Approve** or **Request changes** (checklist of `CHANGE_ITEMS`, pre-ticked from what's missing, plus a note). Requesting changes on a live vendor takes them out of search
+- [x] Vendor: profile form with CNIC number + per-type upload slots (replace/remove), a banner listing the requested items and note, flagged sections highlighted; saving while changes are requested **is** the resubmission (back to the queue, admins notified). Dashboard banner has an "Action needed" state
+- [x] Email: readable per-type bodies with links (`vendor_changes_requested` lists each item). Without SMTP in development, emails are written to `server/dev-outbox/`
+- [x] **Privacy fix:** the public `GET /vendors/:id` returned verification documents to anyone; CNIC, documents and review history are now stripped from public responses
+- [x] Uploads: dev-only local-disk fallback (`server/uploads/`) when Cloudinary isn't configured; production still requires Cloudinary
+- Verified: 33/33 server tests (5 new for this flow), plus a 9-step browser run (admin request → vendor fixes and resubmits with a real upload → admin approves → vendor verified), no page errors

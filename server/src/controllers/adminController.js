@@ -1,12 +1,9 @@
-const VendorProfile = require("../models/VendorProfile");
+const vendorService = require("../services/vendorService");
 const adminService = require("../services/adminService");
 
 async function getPendingVendors(req, res, next) {
   try {
-    const vendors = await VendorProfile.find({ isVerified: false })
-      .sort({ createdAt: 1 })
-      .populate("userId", "name email status");
-    res.json({ vendors });
+    res.json({ vendors: await vendorService.getVerificationQueue(), changeItems: vendorService.CHANGE_ITEMS });
   } catch (err) {
     next(err);
   }

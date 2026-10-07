@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createRequire } from "node:module";
-import { Booking, Payment, VendorProfile, makeUser, makeVendor, makeListing, makeBooking, makePayment, requesterFor } from "./helpers/factories.js";
+import { Booking, Payment, User, VendorProfile, makeUser, makeVendor, makeListing, makeBooking, makePayment, requesterFor } from "./helpers/factories.js";
 
 const require = createRequire(import.meta.url);
 
@@ -96,5 +96,68 @@ describe("admin dispute resolution (PRD §8: admin can resolve a simulated dispu
     expect(stats.commissionEarned).toBe(10);
     expect(stats.bookingsByStatus).toMatchObject({ completed: 1, submitted: 1 });
     expect(stats.recentTransactions).toHaveLength(2);
+  });
+});
+
+describe("vendor verification review", () => {
+  const vendorService = require("../src/services/vendorService.js");
+  const NotificationModel = require("../src/models/Notification.js");
+
+  async function applicant() {
+    const { user, profile } = await makeVendor({ isVerified: false });
+    await VendorProfile.updateOne({ _id: profile._id }, { verificationStatus: "pending", reviewHistory: [{ action: "submitted", by: user._id }] });
+    const admin = requesterFor(await makeUser({ role: "admin" }));
+    return { user, profile, admin, owner: requesterFor(user) };
+  }
+
+  it("public profile never exposes CNIC, documents or the review trail", async () => {
+    const { profile, owner } = await applicant();
+    await vendorService.updateProfile(profile._id, owner, { cnicNumber: "3520212345671", documents: [{ type: "cnic_front", url: "https://example.com/front.png" }] });
+    const pub = await vendorService.getById(profile._id);
+    for (const field of ["cnicNumber", "documents", "verificationDocs", "reviewHistory", "verificationStatus"]) expect(pub).not.toHaveProperty(field);
+  });
+
+  it("normalizes a CNIC and rejects a malformed one", async () => {
+    const { profile, owner } = await applicant();
+    const saved = await vendorService.updateProfile(profile._id, owner, { cnicNumber: "3520212345671" });
+    expect(saved.cnicNumber).toBe("35202-1234567-1");
+    await expect(vendorService.updateProfile(profile._id, owner, { cnicNumber: "123" })).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it("request changes → vendor notified with readable items → vendor saves → back in the queue as resubmitted", async () => {
+    const { user, profile, admin, owner } = await applicant();
+
+    await expect(vendorService.requestChanges(profile._id, admin, {})).rejects.toMatchObject({ statusCode: 400 });
+    await expect(vendorService.requestChanges(profile._id, admin, { items: ["nonsense"] })).rejects.toMatchObject({ statusCode: 400 });
+
+    const requested = await vendorService.requestChanges(profile._id, admin, { items: ["cnic_back", "cnic_number"], note: "Back photo missing" });
+    expect(requested.verificationStatus).toBe("changes_requested");
+    const notification = await NotificationModel.findOne({ userId: user._id, type: "vendor_changes_requested" });
+    expect(notification.payload.items).toEqual([vendorService.CHANGE_ITEMS.cnic_back, vendorService.CHANGE_ITEMS.cnic_number]);
+    expect(notification.payload.note).toBe("Back photo missing");
+
+    const resubmitted = await vendorService.updateProfile(profile._id, owner, { cnicNumber: "35202-1234567-1", resubmitNote: "Added it" });
+    expect(resubmitted.verificationStatus).toBe("pending");
+    expect(resubmitted.reviewHistory.map((h) => h.action)).toEqual(["submitted", "changes_requested", "resubmitted"]);
+    const queue = await vendorService.getVerificationQueue();
+    expect(queue.map((v) => String(v._id))).toContain(String(profile._id));
+  });
+
+  it("approve verifies both copies of isVerified, leaves the queue, and notifies the vendor", async () => {
+    const { user, profile, admin } = await applicant();
+    await vendorService.verifyVendor(profile._id, admin, "Looks good");
+    expect((await VendorProfile.findById(profile._id)).isVerified).toBe(true);
+    expect((await User.findById(user._id)).isVerified).toBe(true);
+    expect(await vendorService.getVerificationQueue()).toHaveLength(0);
+    expect(await NotificationModel.countDocuments({ userId: user._id, type: "vendor_approved" })).toBe(1);
+    await expect(vendorService.verifyVendor(profile._id, admin)).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  it("requesting changes on a live vendor takes them out of search until they comply", async () => {
+    const { user, profile, admin } = await applicant();
+    await vendorService.verifyVendor(profile._id, admin);
+    await vendorService.requestChanges(profile._id, admin, { items: ["description"] });
+    expect((await VendorProfile.findById(profile._id)).isVerified).toBe(false);
+    expect((await User.findById(user._id)).isVerified).toBe(false);
   });
 });

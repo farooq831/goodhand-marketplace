@@ -22,6 +22,18 @@ const LABELS = {
   payment_failed: "Payment failed",
   message_received: "New message",
   review_received: "New review",
+  vendor_changes_requested: "Action needed: update your vendor profile",
+  vendor_approved: "Your vendor profile is approved",
+  vendor_submitted: "New vendor to verify",
+  vendor_resubmitted: "Vendor resubmitted for review",
+};
+
+// Non-booking notifications that still have an obvious place to go.
+const LINKS = {
+  vendor_changes_requested: "/dashboard/vendor/profile",
+  vendor_approved: "/dashboard/vendor/listings",
+  vendor_submitted: "/dashboard/admin/vendors",
+  vendor_resubmitted: "/dashboard/admin/vendors",
 };
 
 const labelFor = (type) => LABELS[type] || type.replaceAll("_", " ");
@@ -86,6 +98,7 @@ function NotificationBell() {
           <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto">
             {notifications.slice(0, 10).map((notification) => {
               const bookingId = notification.payload?.bookingId;
+              const href = bookingId ? `/booking/${bookingId}` : LINKS[notification.type];
               const body = (
                 <>
                   <span className="flex items-center gap-2 font-medium text-ink">
@@ -98,8 +111,8 @@ function NotificationBell() {
               const className = `block rounded-xl p-2.5 text-sm transition hover:bg-canvas ${notification.isRead ? "" : "bg-amber-50/70"}`;
               return (
                 <li key={notification._id}>
-                  {bookingId ? (
-                    <Link to={`/booking/${bookingId}`} onClick={() => handleOpen(notification)} className={className}>{body}</Link>
+                  {href ? (
+                    <Link to={href} onClick={() => handleOpen(notification)} className={className}>{body}</Link>
                   ) : (
                     <button type="button" onClick={() => handleOpen(notification)} className={`${className} w-full text-left`}>{body}</button>
                   )}

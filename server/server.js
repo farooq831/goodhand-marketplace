@@ -55,6 +55,12 @@ app.post(
 );
 
 app.use(express.json({ limit: "10mb" }));
+
+// Dev-only local upload fallback (see uploadController). Never active in
+// production, where uploads go to Cloudinary.
+if (process.env.NODE_ENV !== "production") {
+  app.use("/uploads", express.static(require("./src/controllers/uploadController").LOCAL_UPLOAD_DIR));
+}
 app.use(cookieParser());
 
 app.get("/api/health", (req, res) => {
@@ -84,7 +90,10 @@ initSocket(httpServer);
 
 const PORT = process.env.PORT || 5000;
 
-connectDB().then(() => {
+connectDB().then(async () => {
+  await require("./src/services/vendorService")
+    .backfillVerification()
+    .catch((err) => console.error("Verification backfill failed:", err.message));
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
