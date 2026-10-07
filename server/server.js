@@ -106,4 +106,5 @@ connectDB().then(async () => {
     console.log(`Server running on port ${PORT}`);
   });
   startPaymentReleaseJob();
+  require("./src/jobs/bookingReminders").startBookingReminderJob();
 });

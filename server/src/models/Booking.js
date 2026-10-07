@@ -53,6 +53,12 @@ const bookingSchema = new mongoose.Schema(
     // ones from before a revision request) is kept on the corresponding
     // `submitted` statusHistory entry's `files`.
     submittedFiles: { type: [String], default: [] },
+    // When each reminder went out (jobs/bookingReminders.js) — set once so
+    // a reminder is never sent twice.
+    reminders: {
+      dayBefore: { type: Date, default: null },
+      soon: { type: Date, default: null },
+    },
     statusHistory: { type: [statusHistoryEntrySchema], default: [] },
   },
   { timestamps: true }

@@ -70,7 +70,7 @@ const bodies = {
     `See your earnings: ${appUrl("/dashboard/vendor/earnings")}`,
   ],
   booking_reminder: ({ title, date, startTime, when, address, bookingId }) => [
-    `This is a reminder that "${title}" is ${when === "soon" ? "starting soon" : "tomorrow"} — ${date} at ${startTime}.`,
+    `This is a reminder that "${title}" is ${when === "soon" ? "starting in about 2 hours" : "coming up"} — ${date} at ${startTime}.`,
     ...(address ? ["", `Address: ${address}`] : []),
     "",
     `View the booking: ${appUrl(`/booking/${bookingId}`)}`,
