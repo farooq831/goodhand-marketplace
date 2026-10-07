@@ -1,5 +1,6 @@
 const vendorService = require("../services/vendorService");
 const adminService = require("../services/adminService");
+const payoutService = require("../services/payoutService");
 
 async function getPendingVendors(req, res, next) {
   try {
@@ -35,4 +36,16 @@ async function getUsers(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getPendingVendors, getDisputes, resolveDispute, getAnalytics, setUserStatus, getUsers };
+async function getPendingPayouts(req, res, next) {
+  try { res.json({ payouts: await payoutService.getPendingPayouts() }); } catch (err) { next(err); }
+}
+
+async function getPayoutHistory(req, res, next) {
+  try { res.json({ payouts: await payoutService.getPayoutHistory() }); } catch (err) { next(err); }
+}
+
+async function markPayoutPaid(req, res, next) {
+  try { res.json({ payout: await payoutService.markPaid(req.user, req.body || {}) }); } catch (err) { next(err); }
+}
+
+module.exports = { getPendingVendors, getDisputes, resolveDispute, getAnalytics, setUserStatus, getUsers, getPendingPayouts, getPayoutHistory, markPayoutPaid };

@@ -31,6 +31,28 @@ function normalizeCnic(value) {
   return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
 }
 
+// Pakistani mobile wallet (JazzCash / Easypaisa): 03XXXXXXXXX, optionally +92.
+const WALLET_PATTERN = /^(?:\+?92|0)3\d{9}$/;
+// Pakistani IBAN: PK + 2 check digits + 4-letter bank code + 16 digits.
+const IBAN_PATTERN = /^PK\d{2}[A-Z]{4}\d{16}$/;
+
+function normalizePayoutMethod(input) {
+  if (!input || !input.type) return { type: null, accountTitle: "", accountNumber: "", bankName: "" };
+  if (!["bank", "jazzcash", "easypaisa"].includes(input.type)) throw new ApiError(400, "Payout method must be bank, JazzCash, or Easypaisa");
+  const accountTitle = String(input.accountTitle || "").trim();
+  if (!accountTitle) throw new ApiError(400, "Account title is required");
+  const raw = String(input.accountNumber || "").replace(/[\s-]/g, "").toUpperCase();
+
+  if (input.type === "bank") {
+    const bankName = String(input.bankName || "").trim();
+    if (!bankName) throw new ApiError(400, "Bank name is required");
+    if (!IBAN_PATTERN.test(raw)) throw new ApiError(400, "Enter a valid 24-character IBAN, e.g. PK36SCBL0000001123456702");
+    return { type: "bank", accountTitle, accountNumber: raw, bankName };
+  }
+  if (!WALLET_PATTERN.test(raw)) throw new ApiError(400, "Enter a valid mobile wallet number, e.g. 03001234567");
+  return { type: input.type, accountTitle, accountNumber: raw.replace(/^\+?92/, "0"), bankName: "" };
+}
+
 function normalizeDocuments(documents) {
   if (!Array.isArray(documents)) throw new ApiError(400, "documents must be an array");
   return documents.map((doc) => {
@@ -107,7 +129,7 @@ async function getResponseRate(vendorProfileId) {
 // Identity documents and the review conversation are for the owner and
 // admins only. The public profile used to return the whole document —
 // including verification uploads — to anyone who knew the vendor's id.
-const PRIVATE_FIELDS = ["cnicNumber", "documents", "verificationDocs", "reviewHistory", "verificationStatus", "timeOff"];
+const PRIVATE_FIELDS = ["cnicNumber", "documents", "verificationDocs", "reviewHistory", "verificationStatus", "timeOff", "payoutMethod"];
 
 function toPublic(profileObject) {
   const copy = { ...profileObject };
@@ -149,6 +171,7 @@ async function updateProfile(profileId, requester, updates) {
   }
   if (updates.cnicNumber !== undefined) profile.cnicNumber = normalizeCnic(updates.cnicNumber);
   if (updates.documents !== undefined) profile.documents = normalizeDocuments(updates.documents);
+  if (updates.payoutMethod !== undefined) profile.payoutMethod = normalizePayoutMethod(updates.payoutMethod);
 
   // The vendor saving their profile after the admin asked for changes is
   // the resubmission — no separate step to forget. It goes back into the

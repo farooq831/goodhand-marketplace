@@ -35,6 +35,8 @@ const subjects = {
   vendor_approved: "Your Goodhand vendor profile is approved",
   vendor_submitted: "New vendor waiting for verification",
   vendor_resubmitted: "A vendor updated their profile for review",
+  payout_sent: "Your Goodhand payout has been sent",
+  booking_reminder: "Reminder: you have a booking coming up",
 };
 
 // Readable bodies for the messages people act on. Anything not listed
@@ -58,6 +60,22 @@ const bodies = {
   ],
   vendor_submitted: ({ businessName }) => [`${businessName} registered as a vendor and is waiting for verification.`, "", `Review: ${appUrl("/dashboard/admin/vendors")}`],
   vendor_resubmitted: ({ businessName }) => [`${businessName} updated their profile after your change request.`, "", `Review: ${appUrl("/dashboard/admin/vendors")}`],
+  payout_sent: ({ amount, reference, count, method }) => [
+    `We've sent you Rs ${amount} for ${count} completed booking${count === 1 ? "" : "s"}.`,
+    "",
+    ...(method ? [`Sent to: ${method}`] : []),
+    `Transaction reference: ${reference}`,
+    "",
+    "Depending on your bank or wallet it can take up to 1–2 working days to appear.",
+    `See your earnings: ${appUrl("/dashboard/vendor/earnings")}`,
+  ],
+  booking_reminder: ({ title, date, startTime, when, address, bookingId }) => [
+    `This is a reminder that "${title}" is ${when === "soon" ? "starting soon" : "tomorrow"} — ${date} at ${startTime}.`,
+    ...(address ? ["", `Address: ${address}`] : []),
+    "",
+    `View the booking: ${appUrl(`/booking/${bookingId}`)}`,
+    "If something has changed, message the other person from the booking page as soon as possible.",
+  ],
 };
 
 function composeText(name, type, payload) {

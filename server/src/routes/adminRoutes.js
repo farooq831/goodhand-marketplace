@@ -12,5 +12,8 @@ router.patch("/disputes/:id", adminController.resolveDispute);
 router.get("/analytics", adminController.getAnalytics);
 router.patch("/users/:id/status", adminController.setUserStatus);
 router.get("/users", adminController.getUsers);
+router.get("/payouts", adminController.getPendingPayouts);
+router.get("/payouts/history", adminController.getPayoutHistory);
+router.post("/payouts/mark-paid", adminController.markPayoutPaid);
 
 module.exports = router;

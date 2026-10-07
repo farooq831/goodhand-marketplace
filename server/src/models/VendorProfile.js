@@ -73,6 +73,14 @@ const vendorProfileSchema = new mongoose.Schema(
       default: [],
     },
 
+    // Where the admin sends this vendor's released earnings. Private.
+    payoutMethod: {
+      type: { type: String, enum: ["bank", "jazzcash", "easypaisa", null], default: null },
+      accountTitle: { type: String, trim: true, default: "" },
+      accountNumber: { type: String, trim: true, default: "" }, // IBAN / account no., or mobile wallet number
+      bankName: { type: String, trim: true, default: "" },
+    },
+
     // Days off (holidays, illness, travel). Dates are UTC midnights, both
     // ends inclusive — the same convention as Booking.slot.date. Applies to
     // all of the vendor's listings.

@@ -1,4 +1,5 @@
 import {
+  Banknote,
   BadgeCheck,
   BarChart3,
   CalendarDays,
@@ -34,6 +35,7 @@ export const NAV_BY_ROLE = {
   admin: [
     { to: "/dashboard/admin/vendors", title: "Vendor verification", desc: "Approve pending providers.", icon: BadgeCheck },
     { to: "/dashboard/admin/disputes", title: "Dispute queue", desc: "Resolve held payments.", icon: Scale },
+    { to: "/dashboard/admin/payouts", title: "Payouts", desc: "Record money sent to vendors.", icon: Banknote },
     { to: "/dashboard/admin/analytics", title: "Analytics", desc: "Marketplace GMV and volume.", icon: BarChart3 },
     { to: "/dashboard/admin/users", title: "Account status", desc: "Suspend or reactivate accounts.", icon: Users },
   ],

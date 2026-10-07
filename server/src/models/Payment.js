@@ -17,6 +17,17 @@ const paymentSchema = new mongoose.Schema({
   },
   heldAt: { type: Date, default: null },
   releasedAt: { type: Date, default: null },
+  // Money actually leaving the platform for the vendor (PRD §6: manual
+  // payouts in v1). Only meaningful once status is "released". The method
+  // is snapshotted so later edits to the vendor's details don't rewrite
+  // where a past payout went.
+  payout: {
+    status: { type: String, enum: ["unpaid", "paid"], default: "unpaid" },
+    paidAt: { type: Date, default: null },
+    reference: { type: String, trim: true, default: "" },
+    method: { type: String, default: "" },
+    paidBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  },
 });
 
 paymentSchema.index({ bookingId: 1 });

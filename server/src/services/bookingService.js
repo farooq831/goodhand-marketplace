@@ -142,7 +142,7 @@ async function getMyBookings(requester, statusFilter) {
     .populate("listingId", "title price durationMinutes")
     .populate("customerId", "name")
     .populate("vendorId", "businessName")
-    .populate("paymentId", "amount commissionAmount status releasedAt");
+    .populate("paymentId", "amount commissionAmount status releasedAt payout");
 }
 
 // Architecture.md §6: every transition goes through this one function —

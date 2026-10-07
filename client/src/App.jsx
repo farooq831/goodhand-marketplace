@@ -23,6 +23,7 @@ import VendorSubmitWorkPage from "./pages/vendor/VendorSubmitWorkPage.jsx";
 import AdminDisputesPage from "./pages/admin/AdminDisputesPage.jsx";
 import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage.jsx";
 import AdminUsersPage from "./pages/admin/AdminUsersPage.jsx";
+import AdminPayoutsPage from "./pages/admin/AdminPayoutsPage.jsx";
 import AccountSettingsPage from "./pages/AccountSettingsPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
@@ -76,6 +77,7 @@ function App() {
           <Route path="admin/disputes" element={only(["admin"], <AdminDisputesPage />)} />
           <Route path="admin/analytics" element={only(["admin"], <AdminAnalyticsPage />)} />
           <Route path="admin/users" element={only(["admin"], <AdminUsersPage />)} />
+          <Route path="admin/payouts" element={only(["admin"], <AdminPayoutsPage />)} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
