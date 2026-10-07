@@ -50,6 +50,7 @@ function DocumentTile({ doc, label }) {
 function VendorReviewDrawer({ vendor, onClose }) {
   const queryClient = useQueryClient();
   const closeRef = useRef(null);
+  const formRef = useRef(null);
   const [mode, setMode] = useState("idle"); // idle | request | approve
   const [items, setItems] = useState(() => suggestedItems(vendor));
   const [note, setNote] = useState("");
@@ -62,6 +63,11 @@ function VendorReviewDrawer({ vendor, onClose }) {
   const approve = useMutation({ mutationFn: () => verifyVendor(vendor._id, note.trim()), onSuccess: done });
   const request = useMutation({ mutationFn: () => requestVendorChanges(vendor._id, { items, note: note.trim() }), onSuccess: done });
   const active = mode === "approve" ? approve : request;
+
+  // Bring the checklist/note into view when a decision is started.
+  useEffect(() => {
+    if (mode !== "idle") formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [mode]);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -157,28 +163,35 @@ function VendorReviewDrawer({ vendor, onClose }) {
               ))}
             </ol>
           </section>
+
+          {/* The decision form lives in the scrolling body, not the footer, so the
+              footer's buttons stay on screen however short the window is. */}
+          {mode !== "idle" && (
+            <section ref={formRef} className="space-y-3 rounded-2xl border border-primary/20 bg-white p-4">
+            {mode === "request" && (
+              <fieldset className="space-y-2">
+                <legend className="form-label mb-1">What does the vendor need to fix?</legend>
+                <div className="grid gap-1.5 sm:grid-cols-2">
+                  {Object.entries(CHANGE_ITEMS).map(([key, label]) => (
+                    <label key={key} className="flex cursor-pointer items-start gap-2 rounded-lg p-1.5 text-sm hover:bg-canvas">
+                      <input type="checkbox" checked={items.includes(key)} onChange={() => toggle(key)} className="mt-0.5 accent-[#0F6E5F]" />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            {mode !== "idle" && (
+              <div className="field">
+                <label htmlFor="review-note" className="form-label">{mode === "request" ? "Message to the vendor" : "Note (optional)"}</label>
+                <textarea id="review-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="form-control" placeholder={mode === "request" ? "e.g. The CNIC photo is blurry — please retake it in good light." : "Internal note for the record"} />
+              </div>
+            )}
+              </section>
+          )}
         </div>
 
-        <div className="space-y-3 border-t border-black/5 bg-white p-5">
-          {mode === "request" && (
-            <fieldset className="space-y-2">
-              <legend className="form-label mb-1">What does the vendor need to fix?</legend>
-              <div className="grid gap-1.5 sm:grid-cols-2">
-                {Object.entries(CHANGE_ITEMS).map(([key, label]) => (
-                  <label key={key} className="flex cursor-pointer items-start gap-2 rounded-lg p-1.5 text-sm hover:bg-canvas">
-                    <input type="checkbox" checked={items.includes(key)} onChange={() => toggle(key)} className="mt-0.5 accent-[#0F6E5F]" />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          )}
-          {mode !== "idle" && (
-            <div className="field">
-              <label htmlFor="review-note" className="form-label">{mode === "request" ? "Message to the vendor" : "Note (optional)"}</label>
-              <textarea id="review-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="form-control" placeholder={mode === "request" ? "e.g. The CNIC photo is blurry — please retake it in good light." : "Internal note for the record"} />
-            </div>
-          )}
+        <div className="shrink-0 space-y-3 border-t border-black/5 bg-white p-4 shadow-[0_-8px_24px_rgba(24,51,47,0.06)]">
           {active.isError && <p className="status-banner status-banner--error text-sm" role="alert">{errorMessage(active.error)}</p>}
 
           {mode === "idle" && (
