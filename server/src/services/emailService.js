@@ -68,26 +68,32 @@ function composeText(name, type, payload) {
   return { subject, text: [`Hello ${name},`, "", ...lines, "", "— The Goodhand team"].join("\n") };
 }
 
+// SMTP when configured; the dev outbox otherwise; nothing in tests.
+async function deliver(email, subject, text, tag) {
+  if (!transporter) {
+    if (!useDevOutbox) return;
+    fs.mkdirSync(DEV_OUTBOX, { recursive: true });
+    const file = path.join(DEV_OUTBOX, `${new Date().toISOString().replace(/[:.]/g, "-")}_${tag}_${email}.txt`);
+    fs.writeFileSync(file, `To: ${email}\nSubject: ${subject}\n\n${text}\n`);
+    return;
+  }
+  await transporter.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email, subject, text });
+}
+
 async function sendNotificationEmail(userId, type, payload = {}) {
   if ((!transporter && !useDevOutbox) || !userId) return;
   const user = await User.findById(userId).select("email name");
   if (!user?.email) return;
 
   const { subject, text } = composeText(user.name, type, payload);
-
-  if (!transporter) {
-    fs.mkdirSync(DEV_OUTBOX, { recursive: true });
-    const file = path.join(DEV_OUTBOX, `${new Date().toISOString().replace(/[:.]/g, "-")}_${type}_${user.email}.txt`);
-    fs.writeFileSync(file, `To: ${user.email}\nSubject: ${subject}\n\n${text}\n`);
-    return;
-  }
-
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: user.email,
-    subject,
-    text,
-  });
+  await deliver(user.email, subject, text, type);
 }
 
-module.exports = { sendNotificationEmail, composeText };
+// Account emails (verification, password reset) that aren't in-app
+// notifications. `lines` is the body between the greeting and sign-off.
+async function sendAccountEmail({ email, name }, subject, lines, tag) {
+  const text = [`Hello ${name},`, "", ...lines, "", "— The Goodhand team"].join("\n");
+  await deliver(email, subject, text, tag);
+}
+
+module.exports = { sendNotificationEmail, sendAccountEmail, composeText, appUrl };

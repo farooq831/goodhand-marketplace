@@ -22,6 +22,7 @@ export async function makeUser(overrides = {}) {
     email: overrides.email || `user-${uniq()}@example.com`,
     passwordHash: await bcrypt.hash(overrides.password || "Password1234", 4),
     role: overrides.role || "customer",
+    emailVerified: true,
     ...overrides,
   });
 }

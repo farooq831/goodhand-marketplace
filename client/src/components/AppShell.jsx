@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
+import EmailVerificationBanner from "./EmailVerificationBanner";
 
 const navClass = ({ isActive }) => `site-nav__link${isActive ? " site-nav__link--active" : ""}`;
 const mobileClass = ({ isActive }) => `mobile-nav__link${isActive ? " mobile-nav__link--active" : ""}`;
@@ -84,6 +85,7 @@ function AppShell({ children }) {
           </nav>
         )}
       </header>
+      <EmailVerificationBanner />
       <main id="main" className="flex-1">{children}</main>
       <footer className="site-footer">
         <div className="site-footer__inner">

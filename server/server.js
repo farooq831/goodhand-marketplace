@@ -31,6 +31,11 @@ const app = express();
 // req.ip reflect the real client connection.
 app.set("trust proxy", 1);
 
+// Standard security headers. Cross-origin resource policy is relaxed so the
+// client (a different origin) can display images served from /uploads.
+app.use(require("helmet")({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use("/api", require("./src/middleware/rateLimits").apiLimiter);
+
 function isAllowedOrigin(origin, callback) {
   if (!origin || origin === process.env.CLIENT_URL || (process.env.NODE_ENV !== "production" && /^http:\/\/localhost:\d+$/.test(origin))) {
     return callback(null, true);
@@ -91,6 +96,9 @@ initSocket(httpServer);
 const PORT = process.env.PORT || 5000;
 
 connectDB().then(async () => {
+  await require("./src/services/authService")
+    .backfillEmailVerified()
+    .catch((err) => console.error("Email-verified backfill failed:", err.message));
   await require("./src/services/vendorService")
     .backfillVerification()
     .catch((err) => console.error("Verification backfill failed:", err.message));

@@ -48,7 +48,10 @@ function LoginPage() {
           />
         </div>
         <div className="field">
-          <label htmlFor="login-password" className="form-label">Password</label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="login-password" className="form-label">Password</label>
+            <Link to="/forgot-password" className="text-link text-xs">Forgot password?</Link>
+          </div>
           <input
             id="login-password"
             type="password"

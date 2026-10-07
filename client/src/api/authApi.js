@@ -28,3 +28,23 @@ export async function fetchMeRequest() {
   const res = await apiClient.get("/users/me");
   return res.data;
 }
+
+export async function verifyEmailRequest(token) {
+  const res = await apiClient.post("/auth/verify-email", { token });
+  return res.data; // { user }
+}
+
+export async function resendVerificationRequest() {
+  const res = await apiClient.post("/auth/resend-verification");
+  return res.data;
+}
+
+export async function forgotPasswordRequest(email) {
+  const res = await apiClient.post("/auth/forgot-password", { email });
+  return res.data;
+}
+
+export async function resetPasswordRequest(token, password) {
+  const res = await apiClient.post("/auth/reset-password", { token, password });
+  return res.data;
+}

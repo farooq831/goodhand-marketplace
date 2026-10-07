@@ -25,6 +25,9 @@ import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage.jsx";
 import AdminUsersPage from "./pages/admin/AdminUsersPage.jsx";
 import AccountSettingsPage from "./pages/AccountSettingsPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
+import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import AppShell from "./components/AppShell.jsx";
 import RoleAwareDashboardShell from "./components/RoleAwareDashboardShell.jsx";
@@ -47,6 +50,9 @@ function App() {
         <Route path="/booking/:id" element={<ProtectedRoute><BookingDetailPage /></ProtectedRoute>} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         {/* Every /dashboard/* page renders inside the role-aware sidebar shell. */}
         <Route path="/dashboard" element={<ProtectedRoute><RoleAwareDashboardShell /></ProtectedRoute>}>

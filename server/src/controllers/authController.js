@@ -65,4 +65,43 @@ function logout(req, res) {
   res.status(204).send();
 }
 
-module.exports = { register, login, googleLogin, refreshToken, logout };
+async function verifyEmail(req, res, next) {
+  try {
+    const user = await authService.verifyEmail(req.body?.token);
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function resendVerification(req, res, next) {
+  try {
+    res.json(await authService.resendVerification(req.user.id));
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function forgotPassword(req, res, next) {
+  try {
+    await authService.forgotPassword(req.body?.email);
+    // Same response whether or not the account exists.
+    res.json({ message: "If an account exists for that email, a reset link has been sent." });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function resetPassword(req, res, next) {
+  try {
+    await authService.resetPassword(req.body?.token, req.body?.password);
+    // Every old session was just revoked; drop this browser's cookie too.
+    const { maxAge, ...clearOptions } = REFRESH_COOKIE_OPTIONS;
+    res.clearCookie(REFRESH_COOKIE_NAME, clearOptions);
+    res.json({ message: "Password updated. You can now log in with your new password." });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { register, login, googleLogin, refreshToken, logout, verifyEmail, resendVerification, forgotPassword, resetPassword };

@@ -27,7 +27,7 @@ const services = [
 async function findOrCreateUser(service) {
   return User.findOneAndUpdate(
     { email: service.email },
-    { email: service.email, name: service.name, role: "vendor", passwordHash: await bcrypt.hash("Demo1234", 10), isVerified: true, status: "active" },
+    { email: service.email, name: service.name, role: "vendor", passwordHash: await bcrypt.hash("Demo1234", 10), emailVerified: true, isVerified: true, status: "active" },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 }
@@ -37,14 +37,14 @@ async function seed() {
   // Demo admin — self-signup as admin is blocked in authService, so seed one here.
   await User.findOneAndUpdate(
     { email: "admin@example.com" },
-    { email: "admin@example.com", name: "Demo Admin", role: "admin", passwordHash: await bcrypt.hash("Admin1234", 10), isVerified: true, status: "active" },
+    { email: "admin@example.com", name: "Demo Admin", role: "admin", passwordHash: await bcrypt.hash("Admin1234", 10), emailVerified: true, isVerified: true, status: "active" },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   // A customer with a known password always exists for testing, even on a
   // database where the demo booking hangs off an existing real account.
   const demoCustomer = await User.findOneAndUpdate(
     { email: "demo.customer@example.com" },
-    { email: "demo.customer@example.com", name: "Demo Customer", role: "customer", passwordHash: await bcrypt.hash("Demo1234", 10), status: "active" },
+    { email: "demo.customer@example.com", name: "Demo Customer", role: "customer", passwordHash: await bcrypt.hash("Demo1234", 10), emailVerified: true, status: "active" },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   const customer = await User.findOne({ email: "omer@gmail.com" }) || demoCustomer;
@@ -52,7 +52,7 @@ async function seed() {
   // An unverified vendor so the admin verification queue has something in it.
   const pendingVendor = await User.findOneAndUpdate(
     { email: "demo.vendor.pending@example.com" },
-    { email: "demo.vendor.pending@example.com", name: "Kamran Ali", role: "vendor", passwordHash: await bcrypt.hash("Demo1234", 10), status: "active" },
+    { email: "demo.vendor.pending@example.com", name: "Kamran Ali", role: "vendor", passwordHash: await bcrypt.hash("Demo1234", 10), emailVerified: true, status: "active" },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   await VendorProfile.findOneAndUpdate(

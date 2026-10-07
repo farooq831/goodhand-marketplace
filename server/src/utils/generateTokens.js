@@ -9,7 +9,9 @@ function generateAccessToken(user) {
 }
 
 function generateRefreshToken(user) {
-  return jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, {
+  // tv = tokenVersion; authService.refresh rejects a token whose version
+  // no longer matches the user (e.g. after a password reset).
+  return jwt.sign({ id: user._id, tv: user.tokenVersion || 0 }, process.env.JWT_REFRESH_SECRET, {
     expiresIn: "7d",
   });
 }
