@@ -12,6 +12,7 @@ const WRITABLE_FIELDS = [
   "durationMinutes",
   "photos",
   "availabilityRules",
+  "serviceLocation",
 ];
 
 async function createListing(vendorProfile, data) {

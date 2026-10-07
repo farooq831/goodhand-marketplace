@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyBookings, updateBookingStatus } from "../../api/bookingApi";
 import BookingStatusBadge from "../../components/BookingStatusBadge";
 import { LoadError, SkeletonList } from "../../components/QueryState";
+import { MapPin } from "lucide-react";
 
 function VendorBookingsPage() {
   const queryClient = useQueryClient();
@@ -36,6 +37,13 @@ function VendorBookingsPage() {
                 <p className="meta-text mt-1">
                   {new Date(b.slot.date).toLocaleDateString()} · {b.slot.startTime} · {b.customerId?.name}
                 </p>
+                {(b.serviceAddress?.line || b.notes) && (
+                  <p className="mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted">
+                    {b.serviceAddress?.line && <span className="inline-flex items-center gap-1 font-medium text-ink/80"><MapPin size={12} aria-hidden="true" />{[b.serviceAddress.area, b.serviceAddress.city].filter(Boolean).join(", ") || b.serviceAddress.line}</span>}
+                    {b.serviceAddress?.line && b.notes && " · "}
+                    {b.notes}
+                  </p>
+                )}
               </div>
               <BookingStatusBadge status={b.status} />
             </Link>

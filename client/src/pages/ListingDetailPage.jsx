@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { BadgeCheck, CalendarX, Clock, MapPin, ShieldCheck, X } from "lucide-react";
+import { BadgeCheck, CalendarX, Clock, Home, MapPin, ShieldCheck, X } from "lucide-react";
+import { SERVICE_LOCATION_LABEL } from "../utils/serviceLocation";
 import { getListing, getListingAvailability, searchListings } from "../api/listingApi";
 import { useAuth } from "../context/AuthContext";
 import RatingStars from "../components/RatingStars";
@@ -118,6 +119,7 @@ function ListingDetailPage() {
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
             {vendor && <RatingStars rating={vendor.avgRating} reviewCount={vendor.reviewCount} />}
             <span className="inline-flex items-center gap-1.5"><Clock size={16} aria-hidden="true" />{listing.durationMinutes} minutes</span>
+            <span className="inline-flex items-center gap-1.5"><Home size={16} aria-hidden="true" />{SERVICE_LOCATION_LABEL[listing.serviceLocation || "customer"]}</span>
             {vendor?.serviceArea?.city && <span className="inline-flex items-center gap-1.5"><MapPin size={16} aria-hidden="true" />{vendor.serviceArea.city}</span>}
           </div>
           {listing.description && <p className="mt-6 whitespace-pre-line leading-7 text-ink/75">{listing.description}</p>}

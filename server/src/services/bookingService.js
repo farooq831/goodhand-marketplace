@@ -8,7 +8,30 @@ const { getIO } = require("../sockets");
 const paymentService = require("./paymentService");
 const notificationService = require("./notificationService");
 
-async function createBooking(customerId, { listingId, date, startTime }) {
+// Pakistani mobile/landline, with or without +92 / 0 prefix and separators.
+const PHONE_PATTERN = /^\+?[0-9][0-9\s-]{8,16}$/;
+
+// The service address is what lets a home-service vendor actually turn
+// up; without it a booking for a plumber or cleaner is unusable.
+function serviceDetails(listing, { serviceAddress = {}, contactPhone = "", notes = "" }) {
+  const trimmedNotes = String(notes || "").trim();
+  if (trimmedNotes.length > 1000) throw new ApiError(400, "Notes must be 1000 characters or fewer");
+  if (listing.serviceLocation !== "customer") {
+    return { serviceLocation: listing.serviceLocation, notes: trimmedNotes };
+  }
+
+  const address = {
+    line: String(serviceAddress.line || "").trim(),
+    area: String(serviceAddress.area || "").trim(),
+    city: String(serviceAddress.city || "").trim(),
+  };
+  const phone = String(contactPhone || "").trim();
+  if (!address.line || !address.city) throw new ApiError(400, "Please enter the service address (house/street and city)");
+  if (!PHONE_PATTERN.test(phone)) throw new ApiError(400, "Please enter a valid contact phone number");
+  return { serviceLocation: "customer", serviceAddress: address, contactPhone: phone, notes: trimmedNotes };
+}
+
+async function createBooking(customerId, { listingId, date, startTime, ...details }) {
   if (!listingId || !date || !startTime) {
     throw new ApiError(400, "listingId, date, and startTime are required");
   }
@@ -20,6 +43,12 @@ async function createBooking(customerId, { listingId, date, startTime }) {
 
   const parsedDate = new Date(date);
   if (Number.isNaN(parsedDate.getTime())) throw new ApiError(400, "Invalid date");
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  if (parsedDate < today) throw new ApiError(400, "That date has already passed");
+
+  const extra = serviceDetails(listing, details);
 
   if (!listing.availabilityRules.daysOfWeek.includes(parsedDate.getUTCDay())) {
     throw new ApiError(400, "Listing is not available on that day");
@@ -38,6 +67,7 @@ async function createBooking(customerId, { listingId, date, startTime }) {
     vendorId: listing.vendorId._id,
     slot: { date: parsedDate, startTime, endTime },
     price: listing.price,
+    ...extra,
     status: "pending",
     statusHistory: [{ status: "pending", changedAt: new Date(), changedBy: customerId }],
   });

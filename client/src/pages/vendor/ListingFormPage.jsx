@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { getListing, createListing, updateListing } from "../../api/listingApi";
 import ImageUploadField from "../../components/ImageUploadField";
 import { SERVICE_CATEGORIES as CATEGORIES } from "../../utils/categories";
+import { SERVICE_LOCATIONS } from "../../utils/serviceLocation";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -17,6 +18,7 @@ const emptyForm = {
   startTime: "09:00",
   endTime: "17:00",
   photos: [],
+  serviceLocation: "customer",
 };
 
 function ListingFormPage() {
@@ -44,6 +46,7 @@ function ListingFormPage() {
         startTime: existing.availabilityRules.startTime,
         endTime: existing.availabilityRules.endTime,
         photos: existing.photos || [],
+        serviceLocation: existing.serviceLocation || "customer",
       });
     }
   }, [existing]);
@@ -78,6 +81,7 @@ function ListingFormPage() {
         endTime: form.endTime,
       },
       photos: form.photos,
+      serviceLocation: form.serviceLocation,
     });
   }
 
@@ -134,6 +138,17 @@ function ListingFormPage() {
             ))}
           </select>
         </div>
+        <fieldset className="field">
+          <legend className="form-label mb-1.5">Where is the service done?</legend>
+          <div className="flex flex-col gap-2">
+            {SERVICE_LOCATIONS.map((option) => (
+              <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ${form.serviceLocation === option.value ? "border-primary bg-primary/5" : "border-black/10 hover:border-primary/40"}`}>
+                <input type="radio" name="serviceLocation" value={option.value} checked={form.serviceLocation === option.value} onChange={() => setForm({ ...form, serviceLocation: option.value })} className="mt-0.5 accent-[#0F6E5F]" />
+                <span><span className="font-medium text-ink">{option.label}</span><span className="meta-text block text-xs">{option.hint}</span></span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div className="flex gap-4">
           <div className="field flex-1">
             <label htmlFor="lf-price" className="form-label">Price (Rs)</label>

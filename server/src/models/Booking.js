@@ -36,6 +36,18 @@ const bookingSchema = new mongoose.Schema(
     // Copied from the listing at booking time — the listing's price can
     // change later without touching what was actually agreed to.
     price: { type: Number, required: true },
+    // Copied from the listing at booking time, like price.
+    serviceLocation: { type: String, enum: ["customer", "vendor", "online"], default: "customer" },
+    // Where the vendor has to go (required when serviceLocation is
+    // "customer"). Only the two parties and admins can read a booking.
+    serviceAddress: {
+      line: { type: String, trim: true, default: "" },
+      area: { type: String, trim: true, default: "" },
+      city: { type: String, trim: true, default: "" },
+    },
+    contactPhone: { type: String, trim: true, default: "" },
+    // Job details from the customer, e.g. "kitchen tap leaking under the sink".
+    notes: { type: String, trim: true, maxlength: 1000, default: "" },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment", default: null },
     // The most recent delivery only. Every delivery (including superseded
     // ones from before a revision request) is kept on the corresponding

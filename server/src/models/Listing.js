@@ -19,6 +19,9 @@ const listingSchema = new mongoose.Schema(
       startTime: { type: String, default: "09:00" }, // "HH:mm"
       endTime: { type: String, default: "17:00" },
     },
+    // Where the work happens. "customer" (the default — home repair,
+    // cleaning, home tuition) makes checkout collect the service address.
+    serviceLocation: { type: String, enum: ["customer", "vendor", "online"], default: "customer" },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, MapPin, Phone, StickyNote } from "lucide-react";
+import { SERVICE_LOCATION_LABEL } from "../utils/serviceLocation";
 import { getBooking, updateBookingStatus } from "../api/bookingApi";
 import { getPaymentForBooking } from "../api/paymentApi";
 import { useAuth } from "../context/AuthContext";
@@ -56,6 +57,51 @@ const REASON_PROMPTS = {
     noteOptional: true,
   },
 };
+
+// Where the job is and what it involves. Bookings are only readable by
+// their customer, vendor, and admins, so the address and phone are safe here.
+function ServiceDetails({ booking }) {
+  const where = booking.serviceLocation || "customer";
+  const address = booking.serviceAddress || {};
+  const hasAddress = where === "customer" && address.line;
+  if (!hasAddress && !booking.notes && where === "customer") return null;
+  const fullAddress = [address.line, address.area, address.city].filter(Boolean).join(", ");
+
+  return (
+    <div className="panel mt-6">
+      <h2 className="section-title text-base">Service details</h2>
+      <div className="mt-3 space-y-3 text-sm">
+        <p className="flex items-start gap-2.5">
+          <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+          <span>
+            {hasAddress ? (
+              <>
+                <span className="font-medium text-ink">{fullAddress}</span>
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`} target="_blank" rel="noreferrer" className="text-link ml-2 inline-flex items-center gap-1 text-xs">
+                  Open in Maps <ExternalLink size={12} aria-hidden="true" />
+                </a>
+              </>
+            ) : (
+              <span className="text-ink">{SERVICE_LOCATION_LABEL[where]}{where !== "customer" && " — share details in the chat below"}</span>
+            )}
+          </span>
+        </p>
+        {booking.contactPhone && (
+          <p className="flex items-center gap-2.5">
+            <Phone size={18} className="shrink-0 text-primary" aria-hidden="true" />
+            <a href={`tel:${booking.contactPhone.replace(/[\s-]/g, "")}`} className="text-link">{booking.contactPhone}</a>
+          </p>
+        )}
+        {booking.notes && (
+          <p className="flex items-start gap-2.5">
+            <StickyNote size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+            <span className="whitespace-pre-wrap text-ink/85">{booking.notes}</span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function BookingDetailPage() {
   const { id } = useParams();
@@ -188,6 +234,8 @@ function BookingDetailPage() {
           <span className="data-row__value">{booking.vendorId?.businessName}</span>
         </div>
       </div>
+
+      <ServiceDetails booking={booking} />
 
       {openDispute && (
         <div className="panel-muted mt-6 border-l-4 border-l-red-500">

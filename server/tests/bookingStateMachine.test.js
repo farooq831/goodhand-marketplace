@@ -101,3 +101,46 @@ describe("updateBookingStatus — the single booking state machine", () => {
     await expect(transition(booking, vendor, "accepted")).rejects.toMatchObject({ statusCode: 409 });
   });
 });
+
+describe("createBooking — service address, notes and dates", () => {
+  const { nextSlotDate } = require("./helpers/factories.js");
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const address = { serviceAddress: { line: "House 12, Street 4", area: "DHA Phase 5", city: "Lahore" }, contactPhone: "0300 1234567" };
+
+  async function listingWith(serviceLocation) {
+    const { profile } = await makeVendor();
+    const listing = await makeListing(profile);
+    if (serviceLocation) await listing.updateOne({ serviceLocation });
+    return listing;
+  }
+
+  it("at-customer services require an address and a valid phone, and store them with the notes", async () => {
+    const customer = await makeUser();
+    const listing = await listingWith("customer");
+    const base = { listingId: listing._id, date: iso(nextSlotDate()), startTime: "10:00" };
+
+    await expect(bookingService.createBooking(customer._id, base)).rejects.toMatchObject({ statusCode: 400 });
+    await expect(bookingService.createBooking(customer._id, { ...base, ...address, contactPhone: "abc" })).rejects.toMatchObject({ statusCode: 400 });
+
+    const booking = await bookingService.createBooking(customer._id, { ...base, ...address, notes: "  Tap leaking under the sink  " });
+    expect(booking.serviceLocation).toBe("customer");
+    expect(booking.serviceAddress.city).toBe("Lahore");
+    expect(booking.contactPhone).toBe("0300 1234567");
+    expect(booking.notes).toBe("Tap leaking under the sink");
+  });
+
+  it("online services need no address", async () => {
+    const customer = await makeUser();
+    const listing = await listingWith("online");
+    const booking = await bookingService.createBooking(customer._id, { listingId: listing._id, date: iso(nextSlotDate()), startTime: "11:00", notes: "Chapter 4" });
+    expect(booking.serviceLocation).toBe("online");
+    expect(booking.serviceAddress?.line || "").toBe("");
+  });
+
+  it("rejects dates in the past", async () => {
+    const customer = await makeUser();
+    const listing = await listingWith("online");
+    const yesterday = new Date(Date.now() - 2 * 24 * 3600 * 1000);
+    await expect(bookingService.createBooking(customer._id, { listingId: listing._id, date: iso(yesterday), startTime: "10:00" })).rejects.toMatchObject({ statusCode: 400 });
+  });
+});
