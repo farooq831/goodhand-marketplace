@@ -41,12 +41,12 @@ function TimeOffPanel({ timeOff = [] }) {
           add.mutate();
         }}
       >
-        <div className="flex gap-2">
-          <div className="field flex-1">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+          <div className="field min-w-0">
             <label htmlFor="to-from" className="text-xs text-muted">From</label>
             <input id="to-from" type="date" required min={todayIso()} className="form-control" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value, to: form.to && form.to < e.target.value ? e.target.value : form.to })} />
           </div>
-          <div className="field flex-1">
+          <div className="field min-w-0">
             <label htmlFor="to-to" className="text-xs text-muted">To (optional)</label>
             <input id="to-to" type="date" min={form.from || todayIso()} className="form-control" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />
           </div>

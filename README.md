@@ -21,6 +21,7 @@ Goodhand is a full-stack MERN marketplace that connects customers with local tut
 **For customers**
 - Search by text, category, price, rating, availability date and distance
 - Book a slot from the provider's live availability; double-booking is prevented
+- Give the service address, contact phone and job details at checkout, and get reminders 24 hours and 2 hours before
 - Pay into escrow, then chat with the provider on that booking in real time
 - Approve the delivered work, ask for a revision, or open a dispute
 - Review the provider after a completed booking
@@ -29,15 +30,17 @@ Goodhand is a full-stack MERN marketplace that connects customers with local tut
 - Business profile with an admin verification step before listings go live
 - Create and manage service listings with photos, prices and weekly availability
 - Accept or decline requests, deliver work files, and track everything on a calendar
-- Earnings dashboard showing held and released payments; reply to reviews
+- Block days off (holidays, travel) so customers can't book them
+- Earnings: money in escrow, awaiting payout and paid out, with payout details for bank (IBAN), JazzCash or Easypaisa; reply to reviews
 
 **For admins**
 - Review each vendor application (details, CNIC and documents) and approve it, or request specific corrections; the vendor is notified by email and resubmits
+- Payouts: see what each vendor is owed and record transfers with a reference
 - Suspend or reactivate accounts
 - Dispute queue: read the full chat and booking history, then release the payment or refund it, with a required note
 - Analytics: GMV, bookings by status, money held in escrow, commission, and recent transactions
 
-**Across the app:** in-app and email notifications, a mobile-first responsive design, and accessible components (keyboard focus states, labelled controls, statuses never shown by colour alone).
+**Across the app:** email verification, password reset, login rate-limiting and security headers; in-app and email notifications, a mobile-first responsive design, and accessible components (keyboard focus states, labelled controls, statuses never shown by colour alone).
 
 ## How escrow works
 
