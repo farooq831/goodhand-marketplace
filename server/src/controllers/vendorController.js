@@ -54,4 +54,20 @@ async function getMine(req, res, next) {
   }
 }
 
-module.exports = { create, getOne, update, verify, requestChanges, getMine };
+async function addTimeOff(req, res, next) {
+  try {
+    res.status(201).json(await vendorService.addTimeOff(req.user.id, req.body || {}));
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function removeTimeOff(req, res, next) {
+  try {
+    res.json(await vendorService.removeTimeOff(req.user.id, req.params.entryId));
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, getOne, update, verify, requestChanges, getMine, addTimeOff, removeTimeOff };

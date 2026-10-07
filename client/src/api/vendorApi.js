@@ -35,3 +35,15 @@ export async function getPendingVendors() {
   const res = await apiClient.get("/admin/vendors/pending");
   return res.data.vendors;
 }
+
+// Vendor days off. Returns { timeOff, conflicts } — conflicts are existing
+// pending/accepted bookings inside the new period.
+export async function addTimeOff({ from, to, reason }) {
+  const res = await apiClient.post("/vendors/me/time-off", { from, to, reason });
+  return res.data;
+}
+
+export async function removeTimeOff(entryId) {
+  const res = await apiClient.delete(`/vendors/me/time-off/${entryId}`);
+  return res.data;
+}

@@ -2,6 +2,7 @@ const Listing = require("../models/Listing");
 const VendorProfile = require("../models/VendorProfile");
 const Booking = require("../models/Booking");
 const ApiError = require("../utils/ApiError");
+const { toUtcDay, blockingEntry, notOnTimeOff } = require("../utils/timeOff");
 const { generateSlotsForWindow, doRangesOverlap } = require("../utils/timeSlots");
 
 const WRITABLE_FIELDS = [
@@ -103,6 +104,15 @@ async function getAvailability(id, dateStr) {
     return result;
   }
 
+  // The vendor's days off override the weekly rule.
+  const vendor = await VendorProfile.findById(listing.vendorId).select("timeOff");
+  if (blockingEntry(vendor?.timeOff, date)) {
+    result.isAvailableDay = false;
+    result.timeOff = true;
+    result.slots = [];
+    return result;
+  }
+
   const candidateSlots = generateSlotsForWindow(
     listing.availabilityRules.startTime,
     listing.availabilityRules.endTime,
@@ -169,14 +179,20 @@ async function searchListings(query) {
     if (minPrice) listingFilter.price.$gte = Number(minPrice);
     if (maxPrice) listingFilter.price.$lte = Number(maxPrice);
   }
+  let availableDay = null;
   if (date) {
     const parsed = new Date(date);
     if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "Invalid date");
     listingFilter["availabilityRules.daysOfWeek"] = parsed.getUTCDay();
+    availableDay = toUtcDay(parsed);
   }
 
   if (vendorId) {
     listingFilter.vendorId = vendorId;
+    if (availableDay) {
+      const away = await VendorProfile.exists({ _id: vendorId, timeOff: { $elemMatch: { from: { $lte: availableDay }, to: { $gte: availableDay } } } });
+      if (away) return { listings: [], page: 1, limit: Number(limit) || 12, total: 0 };
+    }
     // A single vendor's own page — nothing to match a business name against.
     if (termRegex) {
       listingFilter.$or = [
@@ -190,6 +206,8 @@ async function searchListings(query) {
     // vendorId allowlist rather than joining on every search.
     const vendorFilter = { isVerified: true };
     if (minRating) vendorFilter.avgRating = { $gte: Number(minRating) };
+    // "Available on <date>" also means the vendor isn't on time off then.
+    if (availableDay) vendorFilter.timeOff = notOnTimeOff(availableDay);
     if (lat != null && lng != null) {
       vendorFilter["serviceArea.location"] = {
         $near: {

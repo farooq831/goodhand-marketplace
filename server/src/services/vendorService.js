@@ -2,6 +2,7 @@ const VendorProfile = require("../models/VendorProfile");
 const User = require("../models/User");
 const Booking = require("../models/Booking");
 const ApiError = require("../utils/ApiError");
+const { toUtcDay } = require("../utils/timeOff");
 const notificationService = require("./notificationService");
 
 const DOC_TYPES = ["cnic_front", "cnic_back", "business_proof", "other"];
@@ -106,7 +107,7 @@ async function getResponseRate(vendorProfileId) {
 // Identity documents and the review conversation are for the owner and
 // admins only. The public profile used to return the whole document —
 // including verification uploads — to anyone who knew the vendor's id.
-const PRIVATE_FIELDS = ["cnicNumber", "documents", "verificationDocs", "reviewHistory", "verificationStatus"];
+const PRIVATE_FIELDS = ["cnicNumber", "documents", "verificationDocs", "reviewHistory", "verificationStatus", "timeOff"];
 
 function toPublic(profileObject) {
   const copy = { ...profileObject };
@@ -224,6 +225,53 @@ async function requestChanges(profileId, requester, { items = [], note = "" } = 
   return profile;
 }
 
+// --- Time off -------------------------------------------------------------
+
+const MAX_TIME_OFF_DAYS = 366;
+
+async function myProfileOrThrow(userId) {
+  const profile = await VendorProfile.findOne({ userId });
+  if (!profile) throw new ApiError(404, "Create your vendor profile first");
+  return profile;
+}
+
+// Existing bookings aren't cancelled automatically — that would surprise
+// customers. They're returned so the vendor can contact them or cancel.
+async function addTimeOff(userId, { from, to, reason = "" } = {}) {
+  const profile = await myProfileOrThrow(userId);
+  const start = toUtcDay(from);
+  const end = toUtcDay(to || from);
+  if (!start || !end) throw new ApiError(400, "Please choose valid dates");
+  if (end < start) throw new ApiError(400, "The end date must be on or after the start date");
+  const today = toUtcDay(new Date());
+  if (end < today) throw new ApiError(400, "Those dates have already passed");
+  if ((end - start) / 86400000 + 1 > MAX_TIME_OFF_DAYS) throw new ApiError(400, "Time off can be at most a year at a time");
+
+  profile.timeOff.push({ from: start, to: end, reason: String(reason).trim().slice(0, 120) });
+  profile.timeOff.sort((a, b) => a.from - b.from);
+  await profile.save();
+
+  const conflicts = await Booking.find({
+    vendorId: profile._id,
+    status: { $in: ["pending", "accepted"] },
+    "slot.date": { $gte: start, $lte: end },
+  })
+    .sort({ "slot.date": 1 })
+    .populate("listingId", "title")
+    .populate("customerId", "name");
+
+  return { timeOff: profile.timeOff, conflicts };
+}
+
+async function removeTimeOff(userId, entryId) {
+  const profile = await myProfileOrThrow(userId);
+  const before = profile.timeOff.length;
+  profile.timeOff = profile.timeOff.filter((entry) => String(entry._id) !== String(entryId));
+  if (profile.timeOff.length === before) throw new ApiError(404, "Time off entry not found");
+  await profile.save();
+  return { timeOff: profile.timeOff };
+}
+
 // Admin verification queue: everyone not yet approved, with the owner's
 // contact details and everything needed to decide without another click.
 async function getVerificationQueue() {
@@ -266,5 +314,7 @@ module.exports = {
   requestChanges,
   getVerificationQueue,
   backfillVerification,
+  addTimeOff,
+  removeTimeOff,
   CHANGE_ITEMS,
 };

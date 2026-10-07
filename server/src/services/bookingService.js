@@ -2,6 +2,7 @@ const Booking = require("../models/Booking");
 const Listing = require("../models/Listing");
 const VendorProfile = require("../models/VendorProfile");
 const ApiError = require("../utils/ApiError");
+const { blockingEntry } = require("../utils/timeOff");
 const { addMinutes, doRangesOverlap } = require("../utils/timeSlots");
 const { resolveBookingRequesterRole } = require("../utils/bookingAccess");
 const { getIO } = require("../sockets");
@@ -47,6 +48,9 @@ async function createBooking(customerId, { listingId, date, startTime, ...detail
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   if (parsedDate < today) throw new ApiError(400, "That date has already passed");
+  if (blockingEntry(listing.vendorId.timeOff, parsedDate)) {
+    throw new ApiError(400, "The provider is unavailable on that date — please pick another day");
+  }
 
   const extra = serviceDetails(listing, details);
 

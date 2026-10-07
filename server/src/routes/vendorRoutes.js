@@ -8,6 +8,8 @@ const router = express.Router();
 
 // /me before /:id so Express doesn't treat "me" as an id param.
 router.get("/me", authenticate, requireRole("vendor"), vendorController.getMine);
+router.post("/me/time-off", authenticate, requireRole("vendor"), vendorController.addTimeOff);
+router.delete("/me/time-off/:entryId", authenticate, requireRole("vendor"), vendorController.removeTimeOff);
 router.post("/", authenticate, requireRole("vendor"), requireVerifiedEmail, vendorController.create);
 router.get("/:id", vendorController.getOne);
 router.patch("/:id", authenticate, vendorController.update);

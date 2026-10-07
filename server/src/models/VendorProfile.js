@@ -73,6 +73,20 @@ const vendorProfileSchema = new mongoose.Schema(
       default: [],
     },
 
+    // Days off (holidays, illness, travel). Dates are UTC midnights, both
+    // ends inclusive — the same convention as Booking.slot.date. Applies to
+    // all of the vendor's listings.
+    timeOff: {
+      type: [
+        {
+          from: { type: Date, required: true },
+          to: { type: Date, required: true },
+          reason: { type: String, trim: true, maxlength: 120, default: "" },
+        },
+      ],
+      default: [],
+    },
+
     isVerified: { type: Boolean, default: false },
     avgRating: { type: Number, default: 0 },
     reviewCount: { type: Number, default: 0 },

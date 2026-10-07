@@ -215,7 +215,9 @@ function ListingDetailPage() {
                 {!date && <p className="meta-text text-xs">Pick a date to see open time slots.</p>}
                 {date && availabilityQuery.isLoading && <div className="flex gap-2">{[1, 2, 3].map((n) => <div key={n} className="skeleton h-8 w-16 rounded-full" />)}</div>}
                 {date && availabilityQuery.isError && <p className="text-sm text-red-700">Couldn't check availability. Try another date.</p>}
-                {date && availabilityQuery.data && !availabilityQuery.data.isAvailableDay && <p className="text-sm text-muted">Not available on that day.</p>}
+                {date && availabilityQuery.data && !availabilityQuery.data.isAvailableDay && (
+                  <p className="text-sm text-muted">{availabilityQuery.data.timeOff ? "The provider is away on this date — please pick another day." : "Not available on that day."}</p>
+                )}
                 {date && availabilityQuery.data?.isAvailableDay && (
                   <>
                     <p className="form-label mb-2">Available times</p>

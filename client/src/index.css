@@ -80,6 +80,7 @@
 	.calendar-cell { @apply min-h-24 rounded-xl border border-black/5 bg-white p-1.5 text-xs; }
 	.calendar-cell--muted { @apply border-transparent bg-canvas text-muted/40; }
 	.calendar-cell--today { @apply border-primary/40 ring-1 ring-primary/20; }
+	.calendar-cell--off { background-image: repeating-linear-gradient(135deg, rgba(24,51,47,.06) 0 6px, transparent 6px 12px); @apply bg-canvas; }
 	.calendar-event { @apply block truncate rounded-lg bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 transition hover:bg-blue-200; }
 	.hero-panel { @apply overflow-hidden rounded-3xl bg-ink p-7 text-white shadow-soft sm:p-10; background-image: radial-gradient(circle at 88% 12%, rgba(232,163,61,.14), transparent 42%); }
 	.file-pill { @apply inline-flex items-center gap-2 rounded-full border border-black/10 bg-canvas px-3 py-1.5 text-xs font-medium text-ink transition hover:border-primary/40 hover:text-primary; }

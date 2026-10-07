@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getMyBookings } from "../../api/bookingApi";
+import { getMyVendorProfile } from "../../api/vendorApi";
+import TimeOffPanel from "../../components/TimeOffPanel";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -27,6 +29,10 @@ function VendorCalendarPage() {
     queryKey: ["my-bookings", "accepted"],
     queryFn: () => getMyBookings("accepted"),
   });
+
+  const { data: profile } = useQuery({ queryKey: ["my-vendor-profile"], queryFn: getMyVendorProfile });
+  const timeOff = (profile?.timeOff || []).map((entry) => ({ ...entry, fromDate: new Date(entry.from), toDate: new Date(entry.to) }));
+  const offEntry = (d) => timeOff.find((entry) => entry.fromDate <= d && d <= entry.toDate);
 
   const byDate = {};
   (bookings || []).forEach((b) => {
@@ -61,7 +67,7 @@ function VendorCalendarPage() {
         <div>
           <p className="eyebrow">Vendor workspace</p>
           <h1 className="workspace-title">Calendar</h1>
-          <p className="workspace-subtitle">Your accepted bookings, blocked out by day.</p>
+          <p className="workspace-subtitle">Your accepted bookings and days off.</p>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <button type="button" onClick={() => shiftMonth(-1)} aria-label="Previous month" className="pager-button">
@@ -74,7 +80,8 @@ function VendorCalendarPage() {
         </div>
       </div>
 
-      <div className="surface p-4">
+      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+      <div className="surface h-fit p-4">
         <div className="calendar-grid mb-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-muted">
           {WEEKDAY_LABELS.map((d) => (
             <div key={d} className="py-1">
@@ -87,12 +94,17 @@ function VendorCalendarPage() {
             const inMonth = d.getMonth() === cursor.month;
             const isToday = d.toDateString() === todayStr;
             const dayBookings = byDate[d.toDateString()] || [];
+            const off = offEntry(d);
             return (
               <div
                 key={d.toISOString()}
-                className={`calendar-cell ${inMonth ? "" : "calendar-cell--muted"} ${isToday ? "calendar-cell--today" : ""}`}
+                className={`calendar-cell ${inMonth ? "" : "calendar-cell--muted"} ${isToday ? "calendar-cell--today" : ""} ${off && inMonth ? "calendar-cell--off" : ""}`}
+                title={off ? `Time off${off.reason ? ` — ${off.reason}` : ""}` : undefined}
               >
-                <div className={`font-semibold ${isToday ? "text-primary" : "text-ink"}`}>{d.getDate()}</div>
+                <div className="flex items-center justify-between">
+                  <span className={`font-semibold ${isToday ? "text-primary" : "text-ink"}`}>{d.getDate()}</span>
+                  {off && inMonth && <span className="rounded bg-black/10 px-1 text-[10px] font-semibold uppercase text-ink/70">Off</span>}
+                </div>
                 <div className="mt-1 flex flex-col gap-0.5">
                   {dayBookings.map((b) => (
                     <Link
@@ -109,6 +121,8 @@ function VendorCalendarPage() {
             );
           })}
         </div>
+      </div>
+      <TimeOffPanel timeOff={profile?.timeOff || []} />
       </div>
     </div>
   );
