@@ -117,6 +117,10 @@ function startPaymentReleaseJob() {
     await autoCompleteStaleDeliveries().catch((err) => console.error("Auto-complete job crashed:", err));
     await releaseEligiblePayments().catch((err) => console.error("Payment release job crashed:", err));
   });
+  // Every 10 minutes: cancel checkouts abandoned before payment.
+  cron.schedule("*/10 * * * *", () => {
+    bookingService.expireUnpaidBookings().catch((err) => console.error("Unpaid-booking expiry failed:", err.message));
+  });
   // Every 10 minutes: expired featured placements stop ranking first. The
   // recommended sort orders by featuredUntil, so expiry must clear it.
   cron.schedule("*/10 * * * *", () => {

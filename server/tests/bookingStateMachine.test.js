@@ -144,3 +144,39 @@ describe("createBooking — service address, notes and dates", () => {
     await expect(bookingService.createBooking(customer._id, { listingId: listing._id, date: iso(yesterday), startTime: "10:00" })).rejects.toMatchObject({ statusCode: 400 });
   });
 });
+
+describe("unpaid checkout protection", () => {
+  const { nextSlotDate } = require("./helpers/factories.js");
+  const paymentService = require("../src/services/paymentService.js");
+  const NotificationModel = require("../src/models/Notification.js");
+  const iso = (d) => d.toISOString().slice(0, 10);
+
+  it("vendor is notified only after payment, and never sees unpaid requests", async () => {
+    const { user: vendorUser, profile } = await makeVendor();
+    const listing = await makeListing(profile);
+    await listing.updateOne({ serviceLocation: "online" });
+    const customer = await makeUser();
+    const booking = await bookingService.createBooking(customer._id, { listingId: listing._id, date: iso(nextSlotDate()), startTime: "10:00" });
+
+    expect(await NotificationModel.countDocuments({ userId: vendorUser._id, type: "booking_request" })).toBe(0);
+    expect(await bookingService.getMyBookings(requesterFor(vendorUser))).toHaveLength(0);
+
+    await paymentService.confirmPayment(customer._id, booking._id);
+    expect(await NotificationModel.countDocuments({ userId: vendorUser._id, type: "booking_request" })).toBe(1);
+    expect(await bookingService.getMyBookings(requesterFor(vendorUser))).toHaveLength(1);
+  });
+
+  it("caps unpaid checkouts per customer and expires abandoned ones", async () => {
+    const { profile } = await makeVendor();
+    const listing = await makeListing(profile);
+    await listing.updateOne({ serviceLocation: "online" });
+    const customer = await makeUser();
+    const times = ["09:00", "10:00", "11:00", "12:00"];
+    for (const t of times.slice(0, 3)) await bookingService.createBooking(customer._id, { listingId: listing._id, date: iso(nextSlotDate()), startTime: t });
+    await expect(bookingService.createBooking(customer._id, { listingId: listing._id, date: iso(nextSlotDate()), startTime: times[3] })).rejects.toMatchObject({ statusCode: 429 });
+
+    const later = new Date(Date.now() + 31 * 60 * 1000);
+    expect(await bookingService.expireUnpaidBookings(later)).toBe(3);
+    expect(await Booking.countDocuments({ customerId: customer._id, status: "cancelled" })).toBe(3);
+  });
+});

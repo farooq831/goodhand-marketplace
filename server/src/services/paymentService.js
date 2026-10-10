@@ -116,8 +116,22 @@ async function confirmPayment(customerId, bookingId) {
   await notificationService
     .createNotification(customerId, "payment_confirmed", { bookingId: booking._id })
     .catch((err) => console.error("Notification failed:", err.message));
+  await notifyVendorOfPaidRequest(booking._id);
 
   return { payment };
+}
+
+// A request reaches the vendor only once money is in escrow, so unpaid
+// checkouts can't be used to spam vendors or drag down their response rate.
+async function notifyVendorOfPaidRequest(bookingId) {
+  try {
+    const { vendorUserId } = await getBookingParticipants(bookingId);
+    const booking = await Booking.findById(bookingId).select("vendorId");
+    await notificationService.createNotification(vendorUserId, "booking_request", { bookingId });
+    if (booking) await require("./trustService").recomputeTrustScore(booking.vendorId);
+  } catch (err) {
+    console.error("Vendor notification failed:", err.message);
+  }
 }
 
 // customerUserId/vendorUserId for notifying the right side of a booking
@@ -227,6 +241,7 @@ async function handleStripeEvent(event) {
       );
       if (payment) {
         const { customerUserId } = await getBookingParticipants(payment.bookingId);
+        await notifyVendorOfPaidRequest(payment.bookingId);
         await notificationService
           .createNotification(customerUserId, "payment_confirmed", { bookingId: payment.bookingId })
           .catch((err) => console.error("Notification failed:", err.message));

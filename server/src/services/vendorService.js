@@ -117,7 +117,7 @@ const RESPONDED_STATUSES = ["accepted", "declined", "submitted", "completed", "d
 async function getResponseRate(vendorProfileId) {
   const [responded, pending] = await Promise.all([
     Booking.countDocuments({ vendorId: vendorProfileId, status: { $in: RESPONDED_STATUSES } }),
-    Booking.countDocuments({ vendorId: vendorProfileId, status: "pending" }),
+    Booking.countDocuments({ vendorId: vendorProfileId, status: "pending", paymentId: { $ne: null } }),
   ]);
 
   const total = responded + pending;
@@ -272,7 +272,7 @@ async function getMyStats(userId) {
 
   const [listingAgg, statusCounts, money] = await Promise.all([
     Listing.aggregate([{ $match: { vendorId: profile._id } }, { $group: { _id: null, views: { $sum: "$views" }, total: { $sum: 1 }, active: { $sum: { $cond: ["$isActive", 1, 0] } } } }]),
-    Booking.aggregate([{ $match: { vendorId: profile._id } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
+    Booking.aggregate([{ $match: { vendorId: profile._id, $nor: [{ status: "pending", paymentId: null }] } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
     // All money buckets in one indexed pass over this vendor's payments.
     Payment.aggregate([
       { $match: { vendorId: profile._id } },

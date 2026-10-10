@@ -68,6 +68,11 @@ async function createBooking(customerId, { listingId, date, startTime, ...detail
 
   await assertNoConflict(listing.vendorId._id, parsedDate, startTime, endTime);
 
+  // Bookings exist before payment (checkout step 1), so cap how many unpaid
+  // ones a customer can hold — otherwise one account could create thousands.
+  const unpaid = await Booking.countDocuments({ customerId, status: "pending", paymentId: null, createdAt: { $gte: new Date(Date.now() - UNPAID_TTL_MS) } });
+  if (unpaid >= MAX_UNPAID_PER_CUSTOMER) throw new ApiError(429, "Please finish paying for your other bookings first (or wait a few minutes)");
+
   const booking = await Booking.create({
     listingId: listing._id,
     customerId,
@@ -79,12 +84,26 @@ async function createBooking(customerId, { listingId, date, startTime, ...detail
     statusHistory: [{ status: "pending", changedAt: new Date(), changedBy: customerId }],
   });
 
-  await trustService.recomputeTrustScore(listing.vendorId._id);
-  await notificationService
-    .createNotification(listing.vendorId.userId, "booking_request", { bookingId: booking._id })
-    .catch((err) => console.error("Notification failed:", err.message));
-
+  // The vendor is told only once it's paid (paymentService) — an unpaid
+  // request is invisible to them and expires (jobs: expireUnpaidBookings).
   return booking;
+}
+
+// Unpaid checkouts older than this are cancelled automatically.
+const UNPAID_TTL_MS = 30 * 60 * 1000;
+const MAX_UNPAID_PER_CUSTOMER = 3;
+
+async function expireUnpaidBookings(now = new Date()) {
+  const stale = await Booking.find({ status: "pending", paymentId: null, createdAt: { $lt: new Date(now.getTime() - UNPAID_TTL_MS) } }).select("_id customerId").limit(1000).lean();
+  let expired = 0;
+  for (const b of stale) {
+    const res = await Booking.updateOne(
+      { _id: b._id, status: "pending", paymentId: null },
+      { $set: { status: "cancelled" }, $push: { statusHistory: { status: "cancelled", changedAt: now, changedBy: b.customerId, note: "Expired — payment wasn't completed within 30 minutes" } } }
+    );
+    expired += res.modifiedCount;
+  }
+  return expired;
 }
 
 // PRD §5.4 / Architecture.md §7: only *accepted* slots block the calendar
@@ -141,6 +160,8 @@ async function getMyBookings(requester, statusFilter) {
     const vendorProfile = await VendorProfile.findOne({ userId: requester.id }).select("_id");
     if (!vendorProfile) return [];
     filter.vendorId = vendorProfile._id;
+    // Unpaid checkouts aren't real requests yet.
+    filter.$nor = [{ status: "pending", paymentId: null }];
   } else {
     filter.customerId = requester.id;
   }
@@ -411,6 +432,7 @@ function emitBookingStatusUpdate(booking) {
 }
 
 module.exports = {
+  expireUnpaidBookings,
   createBooking,
   getBookingById,
   getMyBookings,

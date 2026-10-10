@@ -36,7 +36,8 @@ function scoreFrom({ ratingSum, ratingCount, completed, cancelled, disputed, dec
 async function computeTrustScore(vendorId) {
   const [profile, statusCounts, ratings] = await Promise.all([
     VendorProfile.findById(vendorId).select("isVerified documents"),
-    Booking.aggregate([{ $match: { vendorId } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
+    // Unpaid checkouts never reached the vendor; they mustn't count as ignored.
+    Booking.aggregate([{ $match: { vendorId, $nor: [{ status: "pending", paymentId: null }] } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
     Review.aggregate([{ $match: { vendorId, authorRole: "customer" } }, { $group: { _id: null, sum: { $sum: "$rating" }, count: { $sum: 1 } } }]),
   ]);
   if (!profile) return null;
