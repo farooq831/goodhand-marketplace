@@ -23,6 +23,8 @@ The three documents in the repo root are the spec of record:
 - **`Architecture.md`** — tech stack, MongoDB collection schemas, REST API surface, auth flow, booking state machine, payment/escrow flow, Socket.io event design, and planned folder structure.
 - **`Design.md`** — information architecture (routes), key user flows for each role, wireframe descriptions, visual system (colors/type/status colors), component inventory, and accessibility notes.
 
+**Server conventions added in the audit pass** (see docs/AUDIT_REPORT.md): every request is sanitized against Mongo operators (middleware/sanitizeRequest.js) — never re-enable raw query objects; admin decisions and auth events go through auditService.record(); vendor ranking uses trustService (recompute after events that change ratings/bookings); jobs only run when RUN_JOBS != "false"; startup refuses unsafe config.
+
 Client-side shared pieces worth reusing rather than re-implementing: `RoleAwareDashboardShell` (all `/dashboard/*` routes nest under it; role nav lives in `client/src/utils/dashboardNav.js`), `QueryState` / `LoadError` / `PageLoading` / `PageNotFound` for loading-error-empty states, and `DisputeDetailDrawer`.
 
 ## Architecture (from Architecture.md)
