@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBookingMessages, postBookingMessage } from "../api/messageApi";
-import { getSocket } from "../socket";
+import { getSocket, joinBooking, leaveBooking } from "../socket";
 import { useAuth } from "../context/AuthContext";
 
 function ChatPanel({ bookingId, subtitle = "Booking chat" }) {
@@ -18,7 +18,7 @@ function ChatPanel({ bookingId, subtitle = "Booking chat" }) {
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
-    socket.emit("booking:join", bookingId);
+    joinBooking(bookingId);
 
     function handleMessage(message) {
       if (String(message.bookingId) !== String(bookingId)) return;
@@ -36,7 +36,10 @@ function ChatPanel({ bookingId, subtitle = "Booking chat" }) {
     }
 
     socket.on("message:receive", handleMessage);
-    return () => socket.off("message:receive", handleMessage);
+    return () => {
+      socket.off("message:receive", handleMessage);
+      leaveBooking(bookingId);
+    };
   }, [bookingId, queryClient, user.id]);
 
   useEffect(() => {

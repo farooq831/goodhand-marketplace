@@ -1,5 +1,6 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const Booking = require("../models/Booking");
 const { resolveBookingRequesterRole } = require("../utils/bookingAccess");
 const messageService = require("../services/messageService");
@@ -13,6 +14,23 @@ function isAllowedOrigin(origin, callback) {
     return callback(null, true);
   }
   return callback(new Error("Origin not allowed by CORS"));
+}
+
+const isId = (v) => typeof v === "string" && mongoose.isValidObjectId(v);
+
+// Per-socket token bucket: `limit` events per `windowMs`, refilled smoothly.
+// Sockets bypass the HTTP rate limiter, so events are throttled here.
+function tokenBucket(limit, windowMs) {
+  let tokens = limit;
+  let last = Date.now();
+  return () => {
+    const now = Date.now();
+    tokens = Math.min(limit, tokens + ((now - last) / windowMs) * limit);
+    last = now;
+    if (tokens < 1) return false;
+    tokens -= 1;
+    return true;
+  };
 }
 
 function getIO() {
@@ -52,9 +70,17 @@ function initSocket(httpServer) {
   });
 
   io.on("connection", (socket) => {
-    console.log(`Socket connected: ${socket.id} (user: ${socket.user?.id})`);
+    // The handshake token expires after ~15 minutes. Disconnect then, so a
+    // suspended user or a stolen token can't keep a live channel forever;
+    // the client reconnects with a fresh token (client/src/socket.js).
+    const msLeft = (socket.user?.exp || 0) * 1000 - Date.now();
+    const expiryTimer = setTimeout(() => socket.disconnect(true), Math.max(0, msLeft));
+    const allowMessage = tokenBucket(10, 10_000); // 10 messages per 10s
+    const allowJoin = tokenBucket(30, 60_000); // 30 room joins per minute
 
     socket.on("booking:join", async (bookingId) => {
+      // Socket payloads skip the HTTP sanitizer — validate types here.
+      if (!isId(bookingId) || !allowJoin()) return;
       try {
         const booking = await Booking.findById(bookingId);
         if (!booking) return;
@@ -69,6 +95,9 @@ function initSocket(httpServer) {
     });
 
     socket.on("message:send", async ({ bookingId, text } = {}, ack) => {
+      const reply = typeof ack === "function" ? ack : () => {};
+      if (!isId(bookingId) || typeof text !== "string") return reply({ error: "Invalid message" });
+      if (!allowMessage()) return reply({ error: "You're sending messages too quickly — please slow down" });
       try {
         const message = await messageService.createMessage(bookingId, socket.user, text);
         io.to(`booking:${bookingId}`).emit("message:receive", message);
@@ -79,9 +108,7 @@ function initSocket(httpServer) {
       }
     });
 
-    socket.on("disconnect", () => {
-      console.log(`Socket disconnected: ${socket.id}`);
-    });
+    socket.on("disconnect", () => clearTimeout(expiryTimer));
   });
 
   ioInstance = io;

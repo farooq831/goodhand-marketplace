@@ -6,7 +6,7 @@ import { SERVICE_LOCATION_LABEL } from "../utils/serviceLocation";
 import { getBooking, updateBookingStatus } from "../api/bookingApi";
 import { getPaymentForBooking } from "../api/paymentApi";
 import { useAuth } from "../context/AuthContext";
-import { getSocket } from "../socket";
+import { getSocket, joinBooking, leaveBooking } from "../socket";
 import BookingStatusStepper from "../components/BookingStatusStepper";
 import BookingStatusBadge from "../components/BookingStatusBadge";
 import PaymentStatusBadge from "../components/PaymentStatusBadge";
@@ -148,7 +148,7 @@ function BookingDetailPage() {
     const socket = getSocket();
     if (!socket) return;
 
-    socket.emit("booking:join", id);
+    joinBooking(id);
 
     function handleStatusUpdate() {
       queryClient.invalidateQueries({ queryKey: ["booking", id] });
@@ -156,7 +156,10 @@ function BookingDetailPage() {
     }
 
     socket.on("booking:statusUpdate", handleStatusUpdate);
-    return () => socket.off("booking:statusUpdate", handleStatusUpdate);
+    return () => {
+      socket.off("booking:statusUpdate", handleStatusUpdate);
+      leaveBooking(id);
+    };
   }, [id, queryClient]);
 
   const mutation = useMutation({
