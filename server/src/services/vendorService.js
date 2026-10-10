@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Booking = require("../models/Booking");
 const ApiError = require("../utils/ApiError");
 const { toUtcDay } = require("../utils/timeOff");
+const { isTrustedUploadUrl } = require("../utils/trustedUrl");
 const notificationService = require("./notificationService");
 const trustService = require("./trustService");
 
@@ -54,11 +55,12 @@ function normalizePayoutMethod(input) {
   return { type: input.type, accountTitle, accountNumber: raw.replace(/^\+?92/, "0"), bankName: "" };
 }
 
-function normalizeDocuments(documents) {
+function normalizeDocuments(documents, existing = []) {
+  const kept = new Set(existing.map((d) => d.url));
   if (!Array.isArray(documents)) throw new ApiError(400, "documents must be an array");
   return documents.map((doc) => {
     if (!doc || !DOC_TYPES.includes(doc.type)) throw new ApiError(400, "Each document needs a valid type");
-    if (typeof doc.url !== "string" || !/^https?:\/\//.test(doc.url)) throw new ApiError(400, "Each document needs a valid URL");
+    if (!kept.has(doc.url) && !isTrustedUploadUrl(doc.url)) throw new ApiError(400, "Documents must be uploaded through Goodhand");
     return { type: doc.type, url: doc.url, uploadedAt: doc.uploadedAt || new Date() };
   });
 }
@@ -171,12 +173,12 @@ async function updateProfile(profileId, requester, updates) {
     };
   }
   if (updates.cnicNumber !== undefined) profile.cnicNumber = normalizeCnic(updates.cnicNumber);
-  if (updates.documents !== undefined) profile.documents = normalizeDocuments(updates.documents);
+  if (updates.documents !== undefined) profile.documents = normalizeDocuments(updates.documents, profile.documents);
   if (updates.payoutMethod !== undefined) profile.payoutMethod = normalizePayoutMethod(updates.payoutMethod);
   if (updates.portfolio !== undefined) {
     if (!Array.isArray(updates.portfolio) || updates.portfolio.length > 12) throw new ApiError(400, "Portfolio can have up to 12 items");
     profile.portfolio = updates.portfolio.map((item) => {
-      if (typeof item?.url !== "string" || !/^https?:\/\//.test(item.url)) throw new ApiError(400, "Each portfolio item needs a valid image URL");
+      if (!(profile.portfolio || []).some((p) => p.url === item?.url) && !isTrustedUploadUrl(item?.url)) throw new ApiError(400, "Portfolio photos must be uploaded through Goodhand");
       return { url: item.url, caption: String(item.caption || "").trim().slice(0, 120) };
     });
   }

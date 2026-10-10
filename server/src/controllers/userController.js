@@ -22,6 +22,10 @@ async function updateMe(req, res, next) {
     for (const field of UPDATABLE_FIELDS) {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     }
+    // Validate everything a user can set on themselves.
+    if (updates.name !== undefined && (typeof updates.name !== "string" || !updates.name.trim() || updates.name.length > 80)) return next(new ApiError(400, "Name must be 1-80 characters"));
+    if (updates.phone !== undefined && updates.phone !== null && updates.phone !== "" && !/^\+?[0-9][0-9\s-]{8,16}$/.test(String(updates.phone))) return next(new ApiError(400, "Enter a valid phone number"));
+    if (updates.avatarUrl && !require("../utils/trustedUrl").isTrustedUploadUrl(updates.avatarUrl)) return next(new ApiError(400, "Profile photos must be uploaded through Goodhand"));
 
     const user = await User.findByIdAndUpdate(req.user.id, updates, {
       new: true,

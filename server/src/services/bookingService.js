@@ -6,6 +6,7 @@ const { blockingEntry } = require("../utils/timeOff");
 const trustService = require("./trustService");
 const Payment = require("../models/Payment");
 const { withLock, vendorDayKey } = require("../utils/locks");
+const { isTrustedUploadUrl } = require("../utils/trustedUrl");
 const { addMinutes, doRangesOverlap } = require("../utils/timeSlots");
 const { resolveBookingRequesterRole } = require("../utils/bookingAccess");
 const { getIO } = require("../sockets");
@@ -297,6 +298,9 @@ async function updateBookingStatus(bookingId, requester, targetStatus, { files =
   if (targetStatus === "submitted") {
     if (!files.length || files.some((file) => typeof file !== "string" || !file.trim())) {
       throw new ApiError(400, "At least one work file is required");
+    }
+    if (files.length > 20 || !files.every((file) => isTrustedUploadUrl(file.trim()))) {
+      throw new ApiError(400, "Work files must be uploaded through Goodhand (max 20)");
     }
     deliveredFiles.push(...files.map((file) => file.trim()));
   }

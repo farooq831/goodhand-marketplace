@@ -70,3 +70,26 @@ describe("login monitoring and device tracking", () => {
     expect(await AuditLog.countDocuments({ action: "auth.new_device", actorId: user._id })).toBe(1);
   });
 });
+
+describe("trusted upload URLs", () => {
+  const { isTrustedUploadUrl } = require("../src/utils/trustedUrl.js");
+  const vendorService = require("../src/services/vendorService.js");
+
+  it("accepts our storage, rejects arbitrary links", async () => {
+    process.env.CLOUDINARY_CLOUD_NAME = "goodhand-test";
+    try {
+      expect(isTrustedUploadUrl("https://res.cloudinary.com/goodhand-test/image/upload/v1/a.png")).toBe(true);
+      expect(isTrustedUploadUrl("https://res.cloudinary.com/someone-else/image/upload/a.png")).toBe(false);
+      expect(isTrustedUploadUrl("https://phish.example.net/cnic.html")).toBe(false);
+      expect(isTrustedUploadUrl("javascript:alert(1)")).toBe(false);
+      expect(isTrustedUploadUrl("http://localhost:5000/uploads/verification/x.png")).toBe(true); // dev fallback
+    } finally {
+      delete process.env.CLOUDINARY_CLOUD_NAME;
+    }
+  });
+
+  it("a vendor can't submit a phishing link as a verification document", async () => {
+    const { user, profile } = await makeVendor();
+    await expect(vendorService.updateProfile(profile._id, requesterFor(user), { documents: [{ type: "cnic_front", url: "https://phish.example.net/cnic.html" }] })).rejects.toMatchObject({ statusCode: 400 });
+  });
+});

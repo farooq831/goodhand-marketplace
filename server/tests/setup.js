@@ -24,6 +24,8 @@ process.env.NODE_ENV = "test";
 process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "test-access-secret";
 process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "test-refresh-secret";
 process.env.PLATFORM_COMMISSION_PERCENT = "10";
+// Test fixtures use example.com links for uploaded files.
+process.env.TRUSTED_UPLOAD_HOSTS = "example.com";
 // Deliberately left unset so config/stripe.js exports null and no test can
 // ever reach the real Stripe API; the escrow tests inject their own fake.
 delete process.env.STRIPE_SECRET_KEY;

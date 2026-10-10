@@ -5,6 +5,15 @@ const Booking = require("../models/Booking");
 const ApiError = require("../utils/ApiError");
 const { toUtcDay, blockingEntry } = require("../utils/timeOff");
 const { denormFrom } = require("./listingSync");
+const { isTrustedUploadUrl } = require("../utils/trustedUrl");
+
+// New photos must come from our storage; ones already on the listing
+// (e.g. older or seeded data) may be kept as they are.
+function assertPhotos(photos, existing = []) {
+  if (photos === undefined) return;
+  if (!Array.isArray(photos) || photos.length > 10) throw new ApiError(400, "Up to 10 photos per listing");
+  if (!photos.every((url) => existing.includes(url) || isTrustedUploadUrl(url))) throw new ApiError(400, "Photos must be uploaded through Goodhand");
+}
 const { generateSlotsForWindow, doRangesOverlap } = require("../utils/timeSlots");
 
 const WRITABLE_FIELDS = [
@@ -24,6 +33,7 @@ async function createListing(vendorProfile, data) {
     throw new ApiError(400, "title, category, price, and durationMinutes are required");
   }
 
+  assertPhotos(data.photos);
   const { set } = denormFrom(vendorProfile);
   const payload = { vendorId: vendorProfile._id, ...set };
   for (const field of WRITABLE_FIELDS) {
@@ -117,6 +127,7 @@ async function updateListing(id, requester, updates) {
   const listing = await Listing.findById(id).populate("vendorId", "userId");
   if (!listing) throw new ApiError(404, "Listing not found");
   assertListingOwnerOrAdmin(listing, requester);
+  assertPhotos(updates.photos, listing.photos);
 
   for (const field of WRITABLE_FIELDS) {
     if (updates[field] !== undefined) listing[field] = updates[field];
