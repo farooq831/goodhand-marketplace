@@ -48,6 +48,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// notifyRole("admin", ...) and the admin user list.
+userSchema.index({ role: 1, status: 1 });
+
 const PRIVATE_FIELDS = ["passwordHash", "__v", "tokenVersion", "emailVerifyTokenHash", "emailVerifyExpires", "passwordResetTokenHash", "passwordResetExpires", "knownDevices"];
 
 userSchema.set("toJSON", {

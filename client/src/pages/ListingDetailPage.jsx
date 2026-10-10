@@ -108,7 +108,7 @@ function ListingDetailPage() {
                   aria-pressed={index === photoIndex}
                   className={`h-16 w-20 shrink-0 overflow-hidden rounded-xl ring-2 transition ${index === photoIndex ? "ring-primary" : "ring-transparent opacity-70 hover:opacity-100"}`}
                 >
-                  <img src={photo} alt="" className="h-full w-full object-cover" />
+                  <img src={photo} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

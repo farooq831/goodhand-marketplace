@@ -11,7 +11,7 @@ function ListingCard({ listing }) {
       className="listing-card group"
     >
       <div className="listing-card__image">
-        {listing.photos?.[0] ? <img src={listing.photos[0]} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="listing-card__placeholder"><span>{listing.category?.slice(0, 1)}</span></div>}
+        {listing.photos?.[0] ? <img src={listing.photos[0]} alt="" loading="lazy" decoding="async" width="400" height="300" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="listing-card__placeholder"><span>{listing.category?.slice(0, 1)}</span></div>}
         <span className="listing-card__tag">{listing.category}</span>
       </div>
       <div className="p-5">

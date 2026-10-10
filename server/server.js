@@ -34,6 +34,14 @@ app.set("trust proxy", 1);
 // Standard security headers. Cross-origin resource policy is relaxed so the
 // client (a different origin) can display images served from /uploads.
 app.use(require("helmet")({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(require("compression")());
+
+// For load balancers / uptime monitors: 200 only when the database is up.
+app.get("/api/health", (req, res) => {
+  const dbUp = require("mongoose").connection.readyState === 1;
+  res.status(dbUp ? 200 : 503).json({ status: dbUp ? "ok" : "degraded", db: dbUp ? "up" : "down", uptime: Math.round(process.uptime()) });
+});
+
 app.use("/api", require("./src/middleware/rateLimits").apiLimiter);
 
 function isAllowedOrigin(origin, callback) {
@@ -96,6 +104,34 @@ initSocket(httpServer);
 
 const PORT = process.env.PORT || 5000;
 
+// Refuse to start with configuration that would be unsafe: a blank or
+// placeholder JWT secret lets anyone forge a login token.
+function assertSafeConfig() {
+  const problems = [];
+  if (!process.env.MONGODB_URI) problems.push("MONGODB_URI is not set");
+  for (const key of ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"]) {
+    const value = process.env[key] || "";
+    if (!value) problems.push(`${key} is not set`);
+    else if (process.env.NODE_ENV === "production" && (value.length < 32 || /replace|change|secret|example/i.test(value))) {
+      problems.push(`${key} looks like a placeholder — use at least 32 random characters`);
+    }
+  }
+  if (process.env.JWT_ACCESS_SECRET && process.env.JWT_ACCESS_SECRET === process.env.JWT_REFRESH_SECRET) {
+    problems.push("JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different");
+  }
+  if (process.env.NODE_ENV === "production" && !process.env.CLIENT_URL) problems.push("CLIENT_URL is not set (CORS would block the website)");
+  if (problems.length) {
+    console.error(`Refusing to start:\n  - ${problems.join("\n  - ")}`);
+    process.exit(1);
+  }
+}
+assertSafeConfig();
+
+// Scheduled jobs (escrow release, auto-complete, reminders) should run on
+// exactly one instance once the API is scaled horizontally. Set
+// RUN_JOBS=false on every instance but one.
+const RUN_JOBS = process.env.RUN_JOBS !== "false";
+
 connectDB().then(async () => {
   await require("./src/services/authService")
     .backfillEmailVerified()
@@ -106,6 +142,24 @@ connectDB().then(async () => {
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
-  startPaymentReleaseJob();
-  require("./src/jobs/bookingReminders").startBookingReminderJob();
+  if (RUN_JOBS) {
+    startPaymentReleaseJob();
+    require("./src/jobs/bookingReminders").startBookingReminderJob();
+  }
 });
+
+// Graceful shutdown: hosts send SIGTERM on every deploy. Stop accepting new
+// connections, let in-flight requests finish, then close the database.
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${signal} received — shutting down gracefully`);
+  httpServer.close(() => {
+    require("mongoose").connection.close(false).finally(() => process.exit(0));
+  });
+  // Don't hang forever on a stuck connection.
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

@@ -27,7 +27,8 @@ const listingSchema = new mongoose.Schema(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-listingSchema.index({ category: 1 });
-listingSchema.index({ vendorId: 1 });
+// Public search: active listings by category/price, and per-vendor pages.
+listingSchema.index({ isActive: 1, category: 1, price: 1 });
+listingSchema.index({ vendorId: 1, isActive: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Listing", listingSchema);

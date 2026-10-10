@@ -31,5 +31,7 @@ const paymentSchema = new mongoose.Schema({
 });
 
 paymentSchema.index({ bookingId: 1 });
+// Payout queue / history and the release job.
+paymentSchema.index({ status: 1, "payout.status": 1, releasedAt: 1 });
 
 module.exports = mongoose.model("Payment", paymentSchema);

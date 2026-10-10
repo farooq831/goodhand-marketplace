@@ -1,39 +1,44 @@
+import { Suspense, lazy } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
+import { PageLoading } from "./components/QueryState.jsx";
 import Home from "./pages/Home.jsx";
-import LoginPage from "./pages/LoginPage.jsx";
-import RegisterPage from "./pages/RegisterPage.jsx";
-import DashboardPage from "./pages/DashboardPage.jsx";
-import SearchPage from "./pages/SearchPage.jsx";
-import VendorProfilePage from "./pages/VendorProfilePage.jsx";
-import CustomerProfilePage from "./pages/CustomerProfilePage.jsx";
-import ListingDetailPage from "./pages/ListingDetailPage.jsx";
-import VendorProfileForm from "./pages/vendor/VendorProfileForm.jsx";
-import VendorListingsPage from "./pages/vendor/VendorListingsPage.jsx";
-import ListingFormPage from "./pages/vendor/ListingFormPage.jsx";
-import VendorBookingsPage from "./pages/vendor/VendorBookingsPage.jsx";
-import VendorCalendarPage from "./pages/vendor/VendorCalendarPage.jsx";
-import VendorEarningsPage from "./pages/vendor/VendorEarningsPage.jsx";
-import CustomerBookingsPage from "./pages/customer/CustomerBookingsPage.jsx";
-import BookingDetailPage from "./pages/BookingDetailPage.jsx";
-import CheckoutPage from "./pages/CheckoutPage.jsx";
-import AdminVendorsPage from "./pages/admin/AdminVendorsPage.jsx";
-import CustomerMessagesPage from "./pages/customer/CustomerMessagesPage.jsx";
-import VendorMessagesPage from "./pages/vendor/VendorMessagesPage.jsx";
-import VendorSubmitWorkPage from "./pages/vendor/VendorSubmitWorkPage.jsx";
-import AdminDisputesPage from "./pages/admin/AdminDisputesPage.jsx";
-import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage.jsx";
-import AdminUsersPage from "./pages/admin/AdminUsersPage.jsx";
-import AdminPayoutsPage from "./pages/admin/AdminPayoutsPage.jsx";
-import AdminSecurityPage from "./pages/admin/AdminSecurityPage.jsx";
-import AccountSettingsPage from "./pages/AccountSettingsPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
-import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
-import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import AppShell from "./components/AppShell.jsx";
 import RoleAwareDashboardShell from "./components/RoleAwareDashboardShell.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+
+// Route-level code splitting: each page is its own chunk, downloaded on
+// first visit, so the initial load only carries the shell and the homepage.
+const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage.jsx"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
+const SearchPage = lazy(() => import("./pages/SearchPage.jsx"));
+const VendorProfilePage = lazy(() => import("./pages/VendorProfilePage.jsx"));
+const CustomerProfilePage = lazy(() => import("./pages/CustomerProfilePage.jsx"));
+const ListingDetailPage = lazy(() => import("./pages/ListingDetailPage.jsx"));
+const VendorProfileForm = lazy(() => import("./pages/vendor/VendorProfileForm.jsx"));
+const VendorListingsPage = lazy(() => import("./pages/vendor/VendorListingsPage.jsx"));
+const ListingFormPage = lazy(() => import("./pages/vendor/ListingFormPage.jsx"));
+const VendorBookingsPage = lazy(() => import("./pages/vendor/VendorBookingsPage.jsx"));
+const VendorCalendarPage = lazy(() => import("./pages/vendor/VendorCalendarPage.jsx"));
+const VendorEarningsPage = lazy(() => import("./pages/vendor/VendorEarningsPage.jsx"));
+const CustomerBookingsPage = lazy(() => import("./pages/customer/CustomerBookingsPage.jsx"));
+const BookingDetailPage = lazy(() => import("./pages/BookingDetailPage.jsx"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage.jsx"));
+const AdminVendorsPage = lazy(() => import("./pages/admin/AdminVendorsPage.jsx"));
+const CustomerMessagesPage = lazy(() => import("./pages/customer/CustomerMessagesPage.jsx"));
+const VendorMessagesPage = lazy(() => import("./pages/vendor/VendorMessagesPage.jsx"));
+const VendorSubmitWorkPage = lazy(() => import("./pages/vendor/VendorSubmitWorkPage.jsx"));
+const AdminDisputesPage = lazy(() => import("./pages/admin/AdminDisputesPage.jsx"));
+const AdminAnalyticsPage = lazy(() => import("./pages/admin/AdminAnalyticsPage.jsx"));
+const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage.jsx"));
+const AdminPayoutsPage = lazy(() => import("./pages/admin/AdminPayoutsPage.jsx"));
+const AdminSecurityPage = lazy(() => import("./pages/admin/AdminSecurityPage.jsx"));
+const AccountSettingsPage = lazy(() => import("./pages/AccountSettingsPage.jsx"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage.jsx"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage.jsx"));
+const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage.jsx"));
 
 const only = (roles, page) => <ProtectedRoute allowedRoles={roles}>{page}</ProtectedRoute>;
 
@@ -42,6 +47,7 @@ function App() {
   return (
     <AppShell>
       <ErrorBoundary key={pathname}>
+      <Suspense fallback={<PageLoading />}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/search" element={<SearchPage />} />
@@ -84,6 +90,7 @@ function App() {
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </Suspense>
       </ErrorBoundary>
     </AppShell>
   );

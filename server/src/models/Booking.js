@@ -65,7 +65,11 @@ const bookingSchema = new mongoose.Schema(
 );
 
 bookingSchema.index({ vendorId: 1, "slot.date": 1 });
-bookingSchema.index({ customerId: 1 });
-bookingSchema.index({ status: 1 });
+// "My bookings" for a customer, newest slot first.
+bookingSchema.index({ customerId: 1, "slot.date": -1 });
+// Availability + conflict checks (vendor, accepted, date range).
+bookingSchema.index({ vendorId: 1, status: 1, "slot.date": 1 });
+// Background jobs scan by status within a date window (reminders, releases).
+bookingSchema.index({ status: 1, "slot.date": 1 });
 
 module.exports = mongoose.model("Booking", bookingSchema);

@@ -9,12 +9,14 @@ async function connectDB() {
   const uri = process.env.MONGODB_URI;
 
   if (!uri) {
-    console.error("MONGODB_URI is not set. Add it to server/.env");
-    return;
+    console.error("MONGODB_URI is not set. Add it to .env");
+    process.exit(1);
   }
 
   try {
-    await mongoose.connect(uri);
+    // A bounded pool and timeouts so a slow database fails fast instead of
+    // piling up requests.
+    await mongoose.connect(uri, { maxPoolSize: Number(process.env.MONGODB_POOL_SIZE || 20), serverSelectionTimeoutMS: 10000 });
     console.log("MongoDB connected");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);

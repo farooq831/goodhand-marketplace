@@ -104,5 +104,8 @@ const vendorProfileSchema = new mongoose.Schema(
 
 vendorProfileSchema.index({ "serviceArea.location": "2dsphere" });
 vendorProfileSchema.index({ category: 1 });
+// Search allowlist (verified, rating filter) and the admin verification queue.
+vendorProfileSchema.index({ isVerified: 1, avgRating: -1 });
+vendorProfileSchema.index({ verificationStatus: 1, createdAt: 1 });
 
 module.exports = mongoose.model("VendorProfile", vendorProfileSchema);
