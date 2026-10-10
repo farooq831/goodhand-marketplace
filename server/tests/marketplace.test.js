@@ -43,8 +43,11 @@ describe("recommended ranking and featured listings", () => {
     const high = await makeVendor();
     await VendorProfile.updateOne({ _id: low.profile._id }, { trustScore: 40 });
     await VendorProfile.updateOne({ _id: high.profile._id }, { trustScore: 95 });
+    const { syncListingsForVendor } = require("../src/services/listingSync.js");
     const lowListing = await makeListing(low.profile, { title: "Low" });
     const highListing = await makeListing(high.profile, { title: "High" });
+    await syncListingsForVendor(low.profile._id);
+    await syncListingsForVendor(high.profile._id);
 
     let { listings } = await listingService.searchListings({});
     expect(listings.map((l) => l.title)).toEqual(["High", "Low"]);

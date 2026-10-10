@@ -23,6 +23,18 @@ const listingSchema = new mongoose.Schema(
     // cleaning, home tuition) makes checkout collect the service address.
     serviceLocation: { type: String, enum: ["customer", "vendor", "online"], default: "customer" },
     isActive: { type: Boolean, default: true },
+    // Denormalized from the vendor for search (kept in sync by
+    // services/listingSync.js) so filtering and sorting never touch
+    // VendorProfile at query time.
+    vendorVerified: { type: Boolean, default: false },
+    vendorTrust: { type: Number, default: 60 },
+    vendorRating: { type: Number, default: 0 },
+    vendorReviewCount: { type: Number, default: 0 },
+    vendorName: { type: String, default: "" },
+    location: {
+      type: { type: String, enum: ["Point"] },
+      coordinates: { type: [Number], default: undefined },
+    },
     // Paid placement: shown first with a "Featured" badge until this date.
     featuredUntil: { type: Date, default: null },
     // Detail-page views by anyone other than the owner (vendor analytics).
@@ -38,8 +50,13 @@ const listingSchema = new mongoose.Schema(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-// Public search: active listings by category/price, and per-vendor pages.
-listingSchema.index({ isActive: 1, category: 1, price: 1 });
+// Public search — each index matches one sort over the always-present
+// (vendorVerified, isActive) prefix.
+listingSchema.index({ vendorVerified: 1, isActive: 1, featuredUntil: -1, vendorTrust: -1, createdAt: -1 });
+listingSchema.index({ vendorVerified: 1, isActive: 1, category: 1, price: 1 });
+listingSchema.index({ vendorVerified: 1, isActive: 1, vendorRating: -1, vendorReviewCount: -1 });
+listingSchema.index({ location: "2dsphere" });
+listingSchema.index({ featuredUntil: 1 }, { sparse: true });
 listingSchema.index({ vendorId: 1, isActive: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Listing", listingSchema);

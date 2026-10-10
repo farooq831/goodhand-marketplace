@@ -143,6 +143,10 @@ assertSafeConfig();
 const RUN_JOBS = process.env.RUN_JOBS !== "false";
 
 connectDB().then(async () => {
+  // Unique indexes that guard correctness (locks, one payment per booking,
+  // one review per booking, unique emails) must exist before serving
+  // traffic — Mongoose otherwise builds them in the background.
+  await Promise.all(["Lock", "User", "Review"].map((name) => require("mongoose").model(name).init().catch((err) => console.error(`Index build failed for ${name}:`, err.message))));
   // Replace the old non-unique Payment.bookingId index with the unique one
   // (the database-level guard against double payment). Fails loudly if
   // existing data already contains duplicates that need cleaning up.

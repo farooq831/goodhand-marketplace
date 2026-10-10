@@ -60,6 +60,8 @@ async function recomputeTrustScore(vendorId) {
   try {
     const score = await computeTrustScore(vendorId);
     if (score != null) await VendorProfile.updateOne({ _id: vendorId }, { trustScore: score });
+    // Ratings, trust and approval all feed search ranking on the listings.
+    await require("./listingSync").syncListingsForVendor(vendorId);
     return score;
   } catch (err) {
     console.error(`Trust score update failed for ${vendorId}:`, err.message);

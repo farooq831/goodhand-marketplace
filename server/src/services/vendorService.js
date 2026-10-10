@@ -192,6 +192,8 @@ async function updateProfile(profileId, requester, updates) {
   }
 
   await profile.save();
+  // Name/location changes must reach the listings search uses.
+  await require("./listingSync").syncListingsForVendor(profile._id);
 
   if (resubmitted) {
     await notificationService
@@ -243,6 +245,7 @@ async function requestChanges(profileId, requester, { items = [], note = "" } = 
   // until they comply — otherwise the request has no teeth.
   if (profile.isVerified) await setVerified(profile, false);
   await profile.save();
+  await require("./listingSync").syncListingsForVendor(profile._id);
 
   // The payload carries readable text so the email can list exactly what
   // to fix (emailService formats vendor_changes_requested specially).

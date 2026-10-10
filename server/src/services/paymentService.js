@@ -87,6 +87,8 @@ async function confirmPayment(customerId, bookingId) {
   // A unique index on Payment.bookingId makes a concurrent second attempt
   // (double-click, retry) fail here instead of creating a second escrow
   // payment — the check above alone is a race.
+  // The unique index must exist before we rely on it (built asynchronously).
+  await Payment.init();
   let payment;
   try {
     payment = await Payment.create({

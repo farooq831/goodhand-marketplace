@@ -130,4 +130,24 @@ async function setUserStatus(requester, userId, status) {
   return user;
 }
 
-module.exports = { getDisputes, resolveDispute, getAnalytics, setUserStatus };
+const escapeRegex = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+async function listUsers({ q, role, status, page = 1, limit = 25 } = {}) {
+  const filter = { role: { $in: ["customer", "vendor"] } };
+  if (role === "customer" || role === "vendor") filter.role = role;
+  if (status === "active" || status === "suspended") filter.status = status;
+  if (typeof q === "string" && q.trim()) {
+    // Prefix match on email (index-friendly) or name contains.
+    const term = escapeRegex(q.trim().slice(0, 100));
+    filter.$or = [{ email: new RegExp(`^${term}`, "i") }, { name: new RegExp(term, "i") }];
+  }
+  const size = Math.min(100, Math.max(1, Number(limit) || 25));
+  const pageNum = Math.min(1000, Math.max(1, Number(page) || 1));
+  const [users, total] = await Promise.all([
+    User.find(filter).sort({ createdAt: -1 }).skip((pageNum - 1) * size).limit(size).select("name email role status isVerified createdAt").lean(),
+    User.countDocuments(filter),
+  ]);
+  return { users, total, page: pageNum, limit: size };
+}
+
+module.exports = { getDisputes, resolveDispute, getAnalytics, setUserStatus, listUsers };

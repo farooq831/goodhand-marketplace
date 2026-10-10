@@ -76,6 +76,11 @@ function startPaymentReleaseJob() {
     await autoCompleteStaleDeliveries().catch((err) => console.error("Auto-complete job crashed:", err));
     await releaseEligiblePayments().catch((err) => console.error("Payment release job crashed:", err));
   });
+  // Every 10 minutes: expired featured placements stop ranking first. The
+  // recommended sort orders by featuredUntil, so expiry must clear it.
+  cron.schedule("*/10 * * * *", () => {
+    require("../models/Listing").updateMany({ featuredUntil: { $lte: new Date() } }, { $set: { featuredUntil: null } }).catch((err) => console.error("Featured cleanup failed:", err.message));
+  });
   // Nightly: refresh every trust score (response rates drift as requests age).
   cron.schedule("30 3 * * *", () => {
     trustService.recomputeAll().catch((err) => console.error("Trust score job crashed:", err));

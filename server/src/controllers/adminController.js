@@ -35,11 +35,11 @@ async function setUserStatus(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// Paginated + searchable: this used to return every user in one response,
+// which at scale would load the whole collection into memory.
 async function getUsers(req, res, next) {
   try {
-    const User = require("../models/User");
-    const users = await User.find({ role: { $in: ["customer", "vendor"] } }).sort({ createdAt: -1 }).select("name email role status isVerified");
-    res.json({ users });
+    res.json(await adminService.listUsers(req.query));
   } catch (err) { next(err); }
 }
 

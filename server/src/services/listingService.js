@@ -3,7 +3,8 @@ const Listing = require("../models/Listing");
 const VendorProfile = require("../models/VendorProfile");
 const Booking = require("../models/Booking");
 const ApiError = require("../utils/ApiError");
-const { toUtcDay, blockingEntry, notOnTimeOff } = require("../utils/timeOff");
+const { toUtcDay, blockingEntry } = require("../utils/timeOff");
+const { denormFrom } = require("./listingSync");
 const { generateSlotsForWindow, doRangesOverlap } = require("../utils/timeSlots");
 
 const WRITABLE_FIELDS = [
@@ -23,7 +24,8 @@ async function createListing(vendorProfile, data) {
     throw new ApiError(400, "title, category, price, and durationMinutes are required");
   }
 
-  const payload = { vendorId: vendorProfile._id };
+  const { set } = denormFrom(vendorProfile);
+  const payload = { vendorId: vendorProfile._id, ...set };
   for (const field of WRITABLE_FIELDS) {
     if (data[field] !== undefined) payload[field] = data[field];
   }
@@ -206,148 +208,83 @@ async function getAvailability(id, dateStr) {
   return result;
 }
 
-// Rating lives on the vendor, not the listing, so a DB-level sort by
-// rating would need a $lookup aggregation. This bounded in-memory sort is
-// the cheaper correct-enough approach at portfolio scale.
-const MAX_RATING_SORT_CANDIDATES = 300;
-
 // The free-text `q` filter matches with a case-insensitive regex rather
 // than a MongoDB $text index. $text only matches whole words, so a search
 // for "photo" would miss "Photography" — exactly the partial match a
-// search box is expected to make. The cost is a collection scan, which is
-// the same tradeoff MAX_RATING_SORT_CANDIDATES above already accepts.
+// search box is expected to make. It's applied on top of indexed filters;
+// at large scale move it to Atlas Search (see docs/CODE_REVIEW.md).
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const MAX_PAGE = 500; // deep skip() is a DoS vector; nobody pages past this
+const EARTH_RADIUS_KM = 6378.1;
+
+const SORTS = {
+  // Featured placements first (expired ones are cleared every 10 minutes by
+  // jobs/clearExpiredFeatures), then provider trust, then newest.
+  recommended: { featuredUntil: -1, vendorTrust: -1, createdAt: -1 },
+  rating: { vendorRating: -1, vendorReviewCount: -1, createdAt: -1 },
+  price_asc: { price: 1, createdAt: -1 },
+  price_desc: { price: -1, createdAt: -1 },
+  newest: { createdAt: -1 },
+};
+
+// Every filter and sort runs on fields stored on the listing itself
+// (denormalized from the vendor by listingSync), so this is one indexed
+// query + one count — no per-request load of every vendor, no in-memory
+// sorting, and correct ranking across the whole catalogue.
 async function searchListings(query) {
-  const {
-    q,
-    category,
-    minPrice,
-    maxPrice,
-    minRating,
-    lat,
-    lng,
-    radiusKm,
-    date,
-    vendorId,
-    sort = "recommended",
-    page = 1,
-    limit = 12,
-  } = query;
+  const { q, category, minPrice, maxPrice, minRating, lat, lng, radiusKm, date, vendorId, sort = "recommended", page = 1, limit = 12 } = query;
 
-  const term = typeof q === "string" ? q.trim() : "";
-  const termRegex = term ? new RegExp(escapeRegex(term), "i") : null;
-
-  const listingFilter = { isActive: true };
-  if (category) listingFilter.category = category;
+  const filter = { isActive: true, vendorVerified: true };
+  if (typeof category === "string" && category) filter.category = category;
   if (minPrice || maxPrice) {
-    listingFilter.price = {};
-    if (minPrice) listingFilter.price.$gte = Number(minPrice);
-    if (maxPrice) listingFilter.price.$lte = Number(maxPrice);
+    filter.price = {};
+    if (minPrice) filter.price.$gte = Number(minPrice);
+    if (maxPrice) filter.price.$lte = Number(maxPrice);
   }
-  let availableDay = null;
-  if (date) {
-    const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "Invalid date");
-    listingFilter["availabilityRules.daysOfWeek"] = parsed.getUTCDay();
-    availableDay = toUtcDay(parsed);
+  if (minRating) filter.vendorRating = { $gte: Number(minRating) };
+  if (lat != null && lng != null && lat !== "" && lng !== "") {
+    const radius = Math.min(200, Math.max(1, Number(radiusKm) || 25));
+    filter.location = { $geoWithin: { $centerSphere: [[Number(lng), Number(lat)], radius / EARTH_RADIUS_KM] } };
   }
 
   if (vendorId) {
-    // Same visibility rule as the general search: only approved vendors'
-    // listings are public. This branch used to skip it, so anyone with an
-    // unapproved vendor's id could list that vendor's services.
     if (typeof vendorId !== "string" || !mongoose.isValidObjectId(vendorId)) throw new ApiError(400, "Invalid vendorId");
-    const approved = await VendorProfile.exists({ _id: vendorId, isVerified: true });
-    if (!approved) return { listings: [], page: 1, limit: Number(limit) || 12, total: 0 };
-    listingFilter.vendorId = vendorId;
-    if (availableDay) {
-      const away = await VendorProfile.exists({ _id: vendorId, timeOff: { $elemMatch: { from: { $lte: availableDay }, to: { $gte: availableDay } } } });
-      if (away) return { listings: [], page: 1, limit: Number(limit) || 12, total: 0 };
-    }
-    // A single vendor's own page — nothing to match a business name against.
-    if (termRegex) {
-      listingFilter.$or = [
-        { title: termRegex },
-        { description: termRegex },
-        { category: termRegex },
-      ];
-    }
-  } else {
-    // Rating/location filters live on VendorProfile — resolve them into a
-    // vendorId allowlist rather than joining on every search.
-    const vendorFilter = { isVerified: true };
-    if (minRating) vendorFilter.avgRating = { $gte: Number(minRating) };
-    // "Available on <date>" also means the vendor isn't on time off then.
-    if (availableDay) vendorFilter.timeOff = notOnTimeOff(availableDay);
-    if (lat != null && lng != null) {
-      vendorFilter["serviceArea.location"] = {
-        $near: {
-          $geometry: { type: "Point", coordinates: [Number(lng), Number(lat)] },
-          $maxDistance: (Number(radiusKm) || 25) * 1000,
-        },
-      };
-    }
-    const vendors = await VendorProfile.find(vendorFilter).select("_id businessName");
-    listingFilter.vendorId = { $in: vendors.map((v) => v._id) };
+    filter.vendorId = vendorId;
+  }
 
-    if (termRegex) {
-      // Business-name matches come out of the allowlist we already fetched,
-      // so "Bright Path" finds that vendor's listings without a second
-      // round-trip. $or is ANDed with the vendorId allowlist above, and this
-      // subset of it, so the verified/rating/geo visibility rules still hold.
-      const nameMatched = vendors.filter((v) => termRegex.test(v.businessName)).map((v) => v._id);
-      listingFilter.$or = [
-        { title: termRegex },
-        { description: termRegex },
-        { category: termRegex },
-        ...(nameMatched.length ? [{ vendorId: { $in: nameMatched } }] : []),
-      ];
+  if (date) {
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "Invalid date");
+    filter["availabilityRules.daysOfWeek"] = parsed.getUTCDay();
+    // Vendors on time off that day — a small set, so excluding them is cheap.
+    const day = toUtcDay(parsed);
+    const away = await VendorProfile.find({ timeOff: { $elemMatch: { from: { $lte: day }, to: { $gte: day } } } }).distinct("_id");
+    if (away.length) {
+      if (filter.vendorId) {
+        if (away.some((id) => String(id) === String(filter.vendorId))) return { listings: [], page: 1, limit: Number(limit) || 12, total: 0 };
+      } else {
+        filter.vendorId = { $nin: away };
+      }
     }
   }
 
-  const pageNum = Math.max(1, Number(page) || 1);
+  const term = typeof q === "string" ? q.trim().slice(0, 100) : "";
+  if (term) {
+    const rx = new RegExp(escapeRegex(term), "i");
+    filter.$or = [{ title: rx }, { description: rx }, { category: rx }, { vendorName: rx }];
+  }
+
+  const pageNum = Math.min(MAX_PAGE, Math.max(1, Number(page) || 1));
   const pageSize = Math.min(50, Math.max(1, Number(limit) || 12));
-
-  // "recommended" (the default) and "rating" rank by vendor-level fields, so
-  // they sort a bounded candidate set in memory — the same tradeoff as before.
-  if (sort === "rating" || sort === "recommended" || !sort) {
-    const candidates = await Listing.find(listingFilter)
-      .sort({ createdAt: -1 })
-      .limit(MAX_RATING_SORT_CANDIDATES)
-      .populate("vendorId", LIST_VENDOR_FIELDS);
-
-    if (sort === "rating") {
-      candidates.sort((a, b) => (b.vendorId?.avgRating || 0) - (a.vendorId?.avgRating || 0));
-    } else {
-      // Paid featured placements first, then the provider trust score.
-      const now = Date.now();
-      const featured = (l) => (l.featuredUntil && l.featuredUntil.getTime() > now ? 1 : 0);
-      candidates.sort((a, b) => featured(b) - featured(a) || (b.vendorId?.trustScore ?? 60) - (a.vendorId?.trustScore ?? 60) || b.createdAt - a.createdAt);
-    }
-    const start = (pageNum - 1) * pageSize;
-    return {
-      listings: candidates.slice(start, start + pageSize),
-      page: pageNum,
-      limit: pageSize,
-      total: candidates.length,
-    };
-  }
-
-  const sortSpec =
-    sort === "price_asc" ? { price: 1 } : sort === "price_desc" ? { price: -1 } : { createdAt: -1 };
+  const sortSpec = SORTS[sort] || SORTS.recommended;
 
   const [listings, total] = await Promise.all([
-    Listing.find(listingFilter)
-      .sort(sortSpec)
-      .skip((pageNum - 1) * pageSize)
-      .limit(pageSize)
-      .populate("vendorId", LIST_VENDOR_FIELDS),
-    Listing.countDocuments(listingFilter),
+    Listing.find(filter).sort(sortSpec).skip((pageNum - 1) * pageSize).limit(pageSize).populate("vendorId", LIST_VENDOR_FIELDS),
+    Listing.countDocuments(filter),
   ]);
-
   return { listings, page: pageNum, limit: pageSize, total };
 }
 

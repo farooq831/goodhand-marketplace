@@ -15,9 +15,10 @@ export async function getAnalytics() {
   return data.analytics;
 }
 
-export async function getUsers() {
-  const { data } = await apiClient.get("/admin/users");
-  return data.users;
+// Paginated: { users, total, page, limit }. params: q, role, status, page.
+export async function getUsers(params = {}) {
+  const { data } = await apiClient.get("/admin/users", { params });
+  return data;
 }
 
 export async function setUserStatus(id, status) {

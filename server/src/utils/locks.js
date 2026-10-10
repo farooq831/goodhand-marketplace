@@ -15,6 +15,11 @@ const Lock = mongoose.models.Lock || mongoose.model("Lock", lockSchema);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function withLock(key, fn, { ttlMs = 15000, waitMs = 3000 } = {}) {
+  // The mutex IS the unique index. Mongoose builds indexes asynchronously,
+  // so on a fresh deploy/database the first requests could run before it
+  // exists and the "lock" would silently allow everyone in. Model.init()
+  // resolves once the indexes are built (cached after the first call).
+  await Lock.init();
   const deadline = Date.now() + waitMs;
   for (;;) {
     try {

@@ -43,7 +43,10 @@ export async function makeVendor(overrides = {}) {
 }
 
 export async function makeListing(vendorProfile, overrides = {}) {
+  // Copy the vendor fields search relies on, exactly as createListing does.
+  const { set } = require("../../src/services/listingSync.js").denormFrom(await VendorProfile.findById(vendorProfile._id).lean());
   return Listing.create({
+    ...set,
     vendorId: vendorProfile._id,
     title: overrides.title || "Test Listing",
     description: overrides.description || "A test listing.",
