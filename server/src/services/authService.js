@@ -10,6 +10,12 @@ const sessionService = require("./sessionService");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// bcrypt silently ignores everything past 72 bytes, so two long passwords
+// sharing a prefix would both work. Reject instead of truncating.
+function assertPasswordLength(password) {
+  if (typeof password !== "string" || Buffer.byteLength(password, "utf8") > 72) throw new ApiError(400, "password must be at most 72 bytes (about 72 characters)");
+}
+
 // Never let a client register themselves as "admin".
 const ALLOWED_SIGNUP_ROLES = ["customer", "vendor"];
 
@@ -20,6 +26,7 @@ async function register({ name, email, password, role }, meta = {}) {
   if (password.length < 8) {
     throw new ApiError(400, "password must be at least 8 characters");
   }
+  assertPasswordLength(password);
 
   const safeRole = ALLOWED_SIGNUP_ROLES.includes(role) ? role : "customer";
   const passwordHash = await bcrypt.hash(password, 10);
@@ -190,6 +197,7 @@ async function forgotPassword(email) {
 async function resetPassword(token, password) {
   if (!token) throw new ApiError(400, "Reset token is required");
   if (!password || password.length < 8) throw new ApiError(400, "password must be at least 8 characters");
+  assertPasswordLength(password);
   const user = await User.findOne({ passwordResetTokenHash: hashToken(token), passwordResetExpires: { $gt: new Date() } });
   if (!user) throw new ApiError(400, "This reset link is invalid or has expired. Request a new one.");
 

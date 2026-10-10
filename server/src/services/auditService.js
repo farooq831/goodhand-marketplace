@@ -80,7 +80,7 @@ async function getAuditLog({ action, page = 1, limit = 50 } = {}) {
   const filter = {};
   if (typeof action === "string" && action) filter.action = action.endsWith(".") ? { $regex: `^${action.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}` } : action;
   const size = Math.min(100, Math.max(1, Number(limit) || 50));
-  const skip = (Math.max(1, Number(page) || 1) - 1) * size;
+  const skip = (Math.min(1000, Math.max(1, Number(page) || 1)) - 1) * size;
   const [entries, total] = await Promise.all([
     AuditLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(size).populate("actorId", "name email role").lean(),
     AuditLog.countDocuments(filter),

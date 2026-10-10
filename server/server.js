@@ -182,6 +182,7 @@ let shuttingDown = false;
 function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
+  require("./src/utils/viewCounter").flush(); // don't lose buffered view counts on deploy
   console.log(`${signal} received — shutting down gracefully`);
   httpServer.close(() => {
     require("mongoose").connection.close(false).finally(() => process.exit(0));

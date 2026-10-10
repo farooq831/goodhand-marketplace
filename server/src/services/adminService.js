@@ -72,7 +72,18 @@ async function resolveDispute(bookingId, requester, action, note) {
 // missing here before, so GMV dipped every time a vendor delivered.
 const GMV_STATUSES = ["accepted", "submitted", "completed", "disputed"];
 
+// The dashboard's aggregations scan large collections; cache for a minute
+// so several admins refreshing can't hammer the database.
+let analyticsCache = { value: null, expires: 0 };
+
 async function getAnalytics() {
+  if (process.env.NODE_ENV !== "test" && analyticsCache.value && analyticsCache.expires > Date.now()) return analyticsCache.value;
+  const value = await computeAnalytics();
+  analyticsCache = { value, expires: Date.now() + 60 * 1000 };
+  return value;
+}
+
+async function computeAnalytics() {
   const [bookingVolume, gmv, activeVendors, pendingVendors, statusCounts, paymentTotals, recentTransactions] = await Promise.all([
     Booking.countDocuments(),
     Booking.aggregate([

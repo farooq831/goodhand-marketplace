@@ -64,7 +64,7 @@ async function getListingForOwnerOrPublic(id, requester) {
   // Vendor analytics: count views by anyone but the owner. Fire-and-forget
   // atomic increment — never slows down or fails the page.
   if (!isOwner && requester?.role !== "admin") {
-    Listing.updateOne({ _id: listing._id }, { $inc: { views: 1 } }).catch(() => {});
+    require("../utils/viewCounter").recordView(listing._id);
   }
 
   return listing;
@@ -79,7 +79,7 @@ async function adminListListings({ q, status, page = 1, limit = 25 } = {}) {
   else if (status === "active") filter.isActive = true;
   if (typeof q === "string" && q.trim()) filter.title = new RegExp(escapeRegex(q.trim()), "i");
   const size = Math.min(100, Math.max(1, Number(limit) || 25));
-  const pageNum = Math.max(1, Number(page) || 1);
+  const pageNum = Math.min(1000, Math.max(1, Number(page) || 1));
   const [listings, total] = await Promise.all([
     Listing.find(filter).sort({ createdAt: -1 }).skip((pageNum - 1) * size).limit(size).populate("vendorId", "businessName isVerified trustScore userId"),
     Listing.countDocuments(filter),

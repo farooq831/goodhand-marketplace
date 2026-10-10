@@ -83,7 +83,7 @@ npm run dev                            # API on :5000, website on http://localho
 
 ### Test accounts
 
-These exist after you run `npm run seed:demo`:
+These exist after you run `npm run seed:demo` against a **local** database. On any remote database the seed refuses the public passwords and uses your `SEED_PASSWORD` instead (see DEPLOYMENT.md).
 
 | Role | Email | Password |
 |---|---|---|

@@ -61,21 +61,23 @@ You need a GitHub account with this project pushed to a repository. Make sure `.
 1. Back in Render, set `CLIENT_URL` to the exact Vercel URL: no trailing slash, `https` included.
 2. Save; Render redeploys. CORS and login only accept requests from this exact address.
 
-## 5. Load the demo accounts into the live database
+## 5. Load the demo data into the live database (optional)
 
-From your computer, in the project folder, run:
+The demo accounts in the README use **public** passwords (`Demo1234`, `Admin1234`). For safety, the seed script refuses to use them on any non-local database. Instead, every seeded account, including `admin@example.com`, gets a password **you** choose.
+
+Use a private password of at least 12 characters and keep it secret. Anyone who has it can sign in as the admin.
 
 ```bash
-MONGODB_URI="<your Atlas string>" npm run seed:demo
+MONGODB_URI="<your Atlas string>" SEED_PASSWORD="<a private password, 12+ chars>" npm run seed:demo
 ```
 
-In Windows PowerShell, set the variable first and then run the seed:
+In Windows PowerShell:
 
 ```powershell
-$env:MONGODB_URI="<your Atlas string>"; npm run seed:demo
+$env:MONGODB_URI="<your Atlas string>"; $env:SEED_PASSWORD="<a private password, 12+ chars>"; npm run seed:demo
 ```
 
-This creates the admin, the 10 demo vendors and listings, a demo customer and a vendor awaiting approval. The accounts are listed in the README.
+For a real launch, skip the demo data. Create your own admin account instead and remove `admin@example.com` if it was ever seeded.
 
 ## 6. Smoke test on the live site
 
