@@ -17,6 +17,10 @@ const ACTION_LABEL = {
   "admin.user_suspended": "Suspended user",
   "admin.user_reactivated": "Reactivated user",
   "admin.payout_marked_paid": "Marked payout paid",
+  "admin.listing_hide": "Hid listing",
+  "admin.listing_unhide": "Restored listing",
+  "admin.listing_feature": "Featured listing",
+  "admin.listing_unfeature": "Unfeatured listing",
 };
 
 const FILTERS = [
@@ -121,7 +125,7 @@ function AdminSecurityPage() {
                         <td className={e.action === "auth.login_failed" ? "font-medium text-red-700" : "font-medium"}>{ACTION_LABEL[e.action] || e.action}</td>
                         <td className="text-xs">{e.actorId?.name ? `${e.actorId.name} (${e.actorId.role})` : e.actorEmail || "—"}</td>
                         <td className="max-w-xs truncate text-xs text-muted" title={JSON.stringify(e.details)}>
-                          {e.details?.reason || e.details?.businessName || e.details?.email || e.details?.reference || e.details?.device || e.details?.note || (e.targetType ? `${e.targetType} ${String(e.targetId).slice(-6)}` : "")}
+                          {e.details?.title ? `${e.details.title}${e.details.days ? ` · ${e.details.days} days` : ""}${e.details.reason ? ` — ${e.details.reason}` : ""}` : e.details?.reason || e.details?.businessName || e.details?.email || e.details?.reference || e.details?.device || e.details?.note || (e.targetType ? `${e.targetType} ${String(e.targetId).slice(-6)}` : "")}
                         </td>
                         <td className="font-mono text-xs text-muted" title={e.userAgent}>{e.ip}</td>
                       </tr>
