@@ -70,7 +70,8 @@ describe("password reset", () => {
 
   it("resetting changes the password, is single-use, and signs out existing sessions", async () => {
     const user = await makeUser({ password: "OldPassword1" });
-    const oldRefresh = generateRefreshToken(await User.findById(user._id));
+    const sessionService = require("../src/services/sessionService.js");
+    const oldRefresh = generateRefreshToken(await User.findById(user._id), await sessionService.createSession(user._id));
     await expect(authService.refresh(oldRefresh)).resolves.toBeTruthy();
 
     const raw = await plant(user, "reset");

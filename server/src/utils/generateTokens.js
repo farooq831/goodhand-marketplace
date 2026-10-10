@@ -8,10 +8,10 @@ function generateAccessToken(user) {
   });
 }
 
-function generateRefreshToken(user) {
+function generateRefreshToken(user, session = {}) {
   // tv = tokenVersion; authService.refresh rejects a token whose version
   // no longer matches the user (e.g. after a password reset).
-  return jwt.sign({ id: user._id, tv: user.tokenVersion || 0 }, process.env.JWT_REFRESH_SECRET, {
+  return jwt.sign({ id: user._id, tv: user.tokenVersion || 0, sid: session.sid, jti: session.jti }, process.env.JWT_REFRESH_SECRET, {
     expiresIn: "7d",
   });
 }

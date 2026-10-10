@@ -17,6 +17,9 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
+// Device/IP for the session record (and reuse-detection audit).
+const metaOf = (req) => ({ ...auditService.requestContext(req), req });
+
 function sendAuthResponse(res, statusCode, { user, accessToken, refreshToken }) {
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, REFRESH_COOKIE_OPTIONS);
   res.status(statusCode).json({ user, accessToken });
@@ -24,7 +27,7 @@ function sendAuthResponse(res, statusCode, { user, accessToken, refreshToken }) 
 
 async function register(req, res, next) {
   try {
-    const result = await authService.register(req.body);
+    const result = await authService.register(req.body, metaOf(req));
     await auditService.record("auth.registered", { actor: result.user, details: { role: result.user.role }, req });
     await auditService.trackSignIn(result.user, req);
     sendAuthResponse(res, 201, result);
@@ -35,7 +38,7 @@ async function register(req, res, next) {
 
 async function login(req, res, next) {
   try {
-    const result = await authService.login(req.body);
+    const result = await authService.login(req.body, metaOf(req));
     await auditService.record("auth.login", { actor: result.user, req });
     await auditService.trackSignIn(result.user, req);
     sendAuthResponse(res, 200, result);
@@ -50,7 +53,7 @@ async function login(req, res, next) {
 
 async function googleLogin(req, res, next) {
   try {
-    const result = await authService.loginWithGoogle(req.body.credential);
+    const result = await authService.loginWithGoogle(req.body.credential, metaOf(req));
     await auditService.record("auth.login", { actor: result.user, details: { method: "google" }, req });
     await auditService.trackSignIn(result.user, req);
     sendAuthResponse(res, 200, result);
@@ -61,14 +64,16 @@ async function googleLogin(req, res, next) {
 
 async function refreshToken(req, res, next) {
   try {
-    const result = await authService.refresh(req.cookies[REFRESH_COOKIE_NAME]);
+    const result = await authService.refresh(req.cookies[REFRESH_COOKIE_NAME], metaOf(req));
     sendAuthResponse(res, 200, result);
   } catch (err) {
     next(err);
   }
 }
 
-function logout(req, res) {
+async function logout(req, res) {
+  // End this device's server-side session, then drop the cookie.
+  await authService.logout(req.cookies[REFRESH_COOKIE_NAME]);
   // Must repeat the attributes it was set with, or a SameSite=None cookie
   // is not cleared and logout silently fails in production.
   const { maxAge, ...clearOptions } = REFRESH_COOKIE_OPTIONS;

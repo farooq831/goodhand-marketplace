@@ -38,6 +38,12 @@ const userSchema = new mongoose.Schema(
     emailVerifyExpires: { type: Date, default: null, select: false },
     passwordResetTokenHash: { type: String, default: null, select: false },
     passwordResetExpires: { type: Date, default: null, select: false },
+    // Refresh sessions, one per device (services/sessionService.js).
+    sessions: {
+      type: [{ sid: String, jti: String, prevJti: String, rotatedAt: Date, createdAt: Date, lastUsedAt: Date, userAgent: String, ip: String, _id: false }],
+      default: [],
+      select: false,
+    },
     // Customer shortlists.
     savedListings: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Listing" }], default: [], select: false },
     savedVendors: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "VendorProfile" }], default: [], select: false },
@@ -54,7 +60,7 @@ const userSchema = new mongoose.Schema(
 // notifyRole("admin", ...) and the admin user list.
 userSchema.index({ role: 1, status: 1 });
 
-const PRIVATE_FIELDS = ["passwordHash", "__v", "tokenVersion", "emailVerifyTokenHash", "emailVerifyExpires", "passwordResetTokenHash", "passwordResetExpires", "knownDevices"];
+const PRIVATE_FIELDS = ["passwordHash", "__v", "tokenVersion", "emailVerifyTokenHash", "emailVerifyExpires", "passwordResetTokenHash", "passwordResetExpires", "knownDevices", "sessions"];
 
 userSchema.set("toJSON", {
   transform: (_doc, ret) => {
