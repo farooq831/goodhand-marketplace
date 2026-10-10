@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ACCOUNT_ITEM, NAV_BY_ROLE, OVERVIEW_ITEM } from "../utils/dashboardNav";
+import { useSeo } from "../hooks/useSeo";
 
 const ROLE_LABEL = { customer: "Customer", vendor: "Provider workspace", admin: "Admin console" };
 
@@ -9,6 +10,8 @@ const ROLE_LABEL = { customer: "Customer", vendor: "Provider workspace", admin: 
 // they're meant to read as different apps sharing one visual system.
 function RoleAwareDashboardShell() {
   const { user } = useAuth();
+  // Private pages: keep them out of search engines.
+  useSeo({ title: "Your workspace", noindex: true });
   const items = [OVERVIEW_ITEM, ...(NAV_BY_ROLE[user.role] || []).filter((item) => item.to.startsWith("/dashboard")), ACCOUNT_ITEM];
 
   return (

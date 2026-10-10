@@ -10,6 +10,7 @@ import ListingCard from "../components/ListingCard";
 import RatingStars from "../components/RatingStars";
 import ReviewCard from "../components/ReviewCard";
 import { SkeletonList } from "../components/QueryState";
+import { useSeo } from "../hooks/useSeo";
 
 const TABS = [
   { id: "listings", label: "Listings" },
@@ -36,6 +37,25 @@ function VendorProfilePage() {
     queryKey: ["vendor-reviews", id],
     queryFn: () => getVendorReviews(id),
   });
+
+  const v = vendorQuery.data;
+  useSeo(
+    v
+      ? {
+          title: `${v.businessName} — ${v.category}${v.serviceArea?.city ? ` in ${v.serviceArea.city}` : ""}`,
+          description: (v.description || `Verified ${v.category?.toLowerCase()} provider on Goodhand.`).slice(0, 155),
+          path: `/vendor/${v._id}`,
+          jsonLd: {
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            name: v.businessName,
+            description: v.description,
+            address: v.serviceArea?.city ? { "@type": "PostalAddress", addressLocality: v.serviceArea.city, addressCountry: "PK" } : undefined,
+            ...(v.reviewCount ? { aggregateRating: { "@type": "AggregateRating", ratingValue: v.avgRating, reviewCount: v.reviewCount } } : {}),
+          },
+        }
+      : { title: "Provider" }
+  );
 
   if (vendorQuery.isLoading) return <div className="workspace-page"><div className="skeleton mb-8 h-56 rounded-3xl" /><SkeletonList rows={2} /></div>;
   if (vendorQuery.isError || !vendorQuery.data) {

@@ -10,6 +10,7 @@ import ReviewCard from "../components/ReviewCard";
 import ListingCard from "../components/ListingCard";
 import { SkeletonList } from "../components/QueryState";
 import { getVendorReviews } from "../api/reviewApi";
+import { useSeo } from "../hooks/useSeo";
 
 function ListingDetailSkeleton() {
   return (
@@ -67,6 +68,30 @@ function ListingDetailPage() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [sheetOpen]);
+
+  // Service structured data — price and rating can appear in search results.
+  useSeo(
+    listing
+      ? {
+          title: `${listing.title} by ${listing.vendorId?.businessName || "a local provider"}`,
+          description: (listing.description || `${listing.category} service`).slice(0, 155),
+          image: listing.photos?.[0],
+          path: `/listing/${listing._id}`,
+          jsonLd: {
+            "@context": "https://schema.org",
+            "@type": "Service",
+            name: listing.title,
+            description: listing.description,
+            serviceType: listing.category,
+            image: listing.photos?.[0],
+            areaServed: listing.vendorId?.serviceArea?.city,
+            provider: { "@type": "LocalBusiness", name: listing.vendorId?.businessName, url: `${window.location.origin}/vendor/${listing.vendorId?._id}` },
+            offers: { "@type": "Offer", price: listing.price, priceCurrency: "PKR", availability: "https://schema.org/InStock" },
+            ...(listing.vendorId?.reviewCount ? { aggregateRating: { "@type": "AggregateRating", ratingValue: listing.vendorId.avgRating, reviewCount: listing.vendorId.reviewCount } } : {}),
+          },
+        }
+      : { title: "Service" }
+  );
 
   if (isLoading) return <ListingDetailSkeleton />;
   if (isError || !listing) {

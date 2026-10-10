@@ -6,6 +6,7 @@ import { searchListings } from "../api/listingApi";
 import ListingCard from "../components/ListingCard";
 import QueryState from "../components/QueryState";
 import { SERVICE_CATEGORIES } from "../utils/categories";
+import { useSeo } from "../hooks/useSeo";
 
 // Filters live in the URL rather than component state so that the landing
 // page's search box and category tiles (which navigate here with ?q= and
@@ -61,6 +62,13 @@ function SearchPage() {
   const filters = Object.fromEntries(URL_FILTERS.map((key) => [key, searchParams.get(key) || ""]));
   const sort = filters.sort || "recommended";
   const page = Math.max(1, Number(filters.page) || 1);
+  // Category pages are the main search-engine landing pages ("cleaning services").
+  useSeo({
+    title: filters.q ? `"${filters.q}" — search results` : filters.category ? `${filters.category} services in Pakistan` : "Find trusted local services",
+    description: filters.category ? `Compare verified ${filters.category.toLowerCase()} providers — prices, reviews and availability — and book with escrow-protected payment on Goodhand.` : undefined,
+    path: filters.category && !filters.q ? `/search?category=${encodeURIComponent(filters.category)}` : "/search",
+    noindex: !!filters.q || !!filters.minPrice || !!filters.maxPrice || !!filters.date,
+  });
 
   // The text box commits on submit rather than binding straight to the URL,
   // which would refetch on every keystroke. Kept in sync when the URL

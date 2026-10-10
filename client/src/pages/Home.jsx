@@ -7,6 +7,7 @@ import ListingCard from "../components/ListingCard";
 import { useAuth } from "../context/AuthContext";
 import { SERVICE_CATEGORIES } from "../utils/categories";
 import { CATEGORY_ICONS } from "../utils/categoryIcons";
+import { useSeo } from "../hooks/useSeo";
 
 const TRUST_POINTS = [
   { icon: BadgeCheck, title: "Verified vendors", text: "Every provider is checked by our team before their services go live." },
@@ -25,6 +26,16 @@ function Home() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const featured = useQuery({ queryKey: ["featured-listings"], queryFn: () => searchListings({ limit: 6, sort: "recommended" }) });
+  useSeo({
+    path: "/",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Goodhand",
+      url: window.location.origin,
+      potentialAction: { "@type": "SearchAction", target: `${window.location.origin}/search?q={search_term_string}`, "query-input": "required name=search_term_string" },
+    },
+  });
 
   return (
     <div>

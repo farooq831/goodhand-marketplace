@@ -31,6 +31,15 @@ const app = express();
 // req.ip reflect the real client connection.
 app.set("trust proxy", 1);
 
+// Every request gets an id (or keeps the one a proxy assigned) — returned in
+// the X-Request-Id header and error bodies, and used in server logs.
+app.use((req, res, next) => {
+  const incoming = req.get("x-request-id");
+  req.id = incoming && /^[\w-]{8,64}$/.test(incoming) ? incoming : require("crypto").randomUUID();
+  res.set("X-Request-Id", req.id);
+  next();
+});
+
 // Standard security headers. Cross-origin resource policy is relaxed so the
 // client (a different origin) can display images served from /uploads.
 app.use(require("helmet")({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
@@ -42,6 +51,7 @@ app.get("/api/health", (req, res) => {
   res.status(dbUp ? 200 : 503).json({ status: dbUp ? "ok" : "degraded", db: dbUp ? "up" : "down", uptime: Math.round(process.uptime()) });
 });
 
+app.use(require("./src/routes/seoRoutes"));
 app.use("/api", require("./src/middleware/rateLimits").apiLimiter);
 
 function isAllowedOrigin(origin, callback) {
