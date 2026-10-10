@@ -66,7 +66,7 @@ function QueryState({ query, isEmpty = false, empty = "Nothing here yet.", empty
     return (
       <div className="empty-state flex flex-col items-center gap-3">
         <Inbox size={28} aria-hidden="true" className="text-primary/60" />
-        <p>{empty}</p>
+        <div>{empty}</div>
         {emptyAction}
       </div>
     );

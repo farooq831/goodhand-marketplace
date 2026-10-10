@@ -27,6 +27,7 @@ const CustomerBookingsPage = lazy(() => import("./pages/customer/CustomerBooking
 const BookingDetailPage = lazy(() => import("./pages/BookingDetailPage.jsx"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage.jsx"));
 const AdminVendorsPage = lazy(() => import("./pages/admin/AdminVendorsPage.jsx"));
+const CustomerSavedPage = lazy(() => import("./pages/customer/CustomerSavedPage.jsx"));
 const CustomerMessagesPage = lazy(() => import("./pages/customer/CustomerMessagesPage.jsx"));
 const VendorMessagesPage = lazy(() => import("./pages/vendor/VendorMessagesPage.jsx"));
 const VendorSubmitWorkPage = lazy(() => import("./pages/vendor/VendorSubmitWorkPage.jsx"));
@@ -34,6 +35,7 @@ const AdminDisputesPage = lazy(() => import("./pages/admin/AdminDisputesPage.jsx
 const AdminAnalyticsPage = lazy(() => import("./pages/admin/AdminAnalyticsPage.jsx"));
 const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage.jsx"));
 const AdminPayoutsPage = lazy(() => import("./pages/admin/AdminPayoutsPage.jsx"));
+const AdminListingsPage = lazy(() => import("./pages/admin/AdminListingsPage.jsx"));
 const AdminSecurityPage = lazy(() => import("./pages/admin/AdminSecurityPage.jsx"));
 const AccountSettingsPage = lazy(() => import("./pages/AccountSettingsPage.jsx"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage.jsx"));
@@ -78,6 +80,7 @@ function App() {
           <Route path="vendor/earnings" element={only(["vendor"], <VendorEarningsPage />)} />
 
           <Route path="customer/bookings" element={only(["customer"], <CustomerBookingsPage />)} />
+          <Route path="customer/saved" element={only(["customer"], <CustomerSavedPage />)} />
           <Route path="customer/messages" element={only(["customer"], <CustomerMessagesPage />)} />
 
           <Route path="admin/vendors" element={only(["admin"], <AdminVendorsPage />)} />
@@ -85,6 +88,7 @@ function App() {
           <Route path="admin/analytics" element={only(["admin"], <AdminAnalyticsPage />)} />
           <Route path="admin/users" element={only(["admin"], <AdminUsersPage />)} />
           <Route path="admin/payouts" element={only(["admin"], <AdminPayoutsPage />)} />
+          <Route path="admin/listings" element={only(["admin"], <AdminListingsPage />)} />
           <Route path="admin/security" element={only(["admin"], <AdminSecurityPage />)} />
         </Route>
 

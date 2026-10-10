@@ -20,7 +20,7 @@ const ITEM_SECTION = {
   category: "category",
 };
 
-const EMPTY_FORM = { businessName: "", category: CATEGORIES[0], description: "", city: "", lat: "", lng: "", cnicNumber: "", documents: [] };
+const EMPTY_FORM = { businessName: "", category: CATEGORIES[0], description: "", city: "", lat: "", lng: "", cnicNumber: "", documents: [], portfolio: [] };
 
 function StatusBanner({ profile, request }) {
   if (!profile) {
@@ -78,6 +78,7 @@ function VendorProfileForm() {
         lng: profile.serviceArea?.location?.coordinates?.[0] ?? "",
         cnicNumber: profile.cnicNumber || "",
         documents: profile.documents || [],
+        portfolio: profile.portfolio || [],
       });
     }
   }, [profile]);
@@ -164,6 +165,29 @@ function VendorProfileForm() {
             <label htmlFor="vp-desc" className="form-label">Description</label>
             <textarea id="vp-desc" placeholder="Tell customers about your experience and services..." rows={4} className="form-control" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
+        </section>
+
+        <section className="flex flex-col gap-3 border-t border-black/5 pt-6">
+          <div>
+            <h2 className="section-title text-base">Portfolio</h2>
+            <p className="meta-text mt-1 text-xs">Photos of past work, shown on your public profile. Up to 12 — the strongest trust signal for new customers.</p>
+          </div>
+          {form.portfolio.length > 0 && (
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {form.portfolio.map((item, index) => (
+                <li key={item.url} className="overflow-hidden rounded-xl border border-black/10 bg-white">
+                  <div className="relative">
+                    <img src={item.url} alt="" className="aspect-square w-full object-cover" />
+                    <button type="button" onClick={() => setForm((f) => ({ ...f, portfolio: f.portfolio.filter((_, i) => i !== index) }))} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-700 shadow" aria-label="Remove photo"><Trash2 size={14} /></button>
+                  </div>
+                  <input aria-label="Caption" maxLength={120} placeholder="Caption (optional)" className="w-full border-0 border-t border-black/5 px-2 py-1.5 text-xs focus:outline-none" value={item.caption} onChange={(e) => setForm((f) => ({ ...f, portfolio: f.portfolio.map((p, i) => (i === index ? { ...p, caption: e.target.value } : p)) }))} />
+                </li>
+              ))}
+            </ul>
+          )}
+          {form.portfolio.length < 12 && (
+            <ImageUploadField kind="listing" multiple onUploaded={(urls) => setForm((f) => ({ ...f, portfolio: [...f.portfolio, ...urls.map((url) => ({ url, caption: "" }))].slice(0, 12) }))} />
+          )}
         </section>
 
         <section className="flex flex-col gap-5 border-t border-black/5 pt-6">

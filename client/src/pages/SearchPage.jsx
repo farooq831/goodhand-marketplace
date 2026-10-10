@@ -59,7 +59,7 @@ function SearchPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const filters = Object.fromEntries(URL_FILTERS.map((key) => [key, searchParams.get(key) || ""]));
-  const sort = filters.sort || "newest";
+  const sort = filters.sort || "recommended";
   const page = Math.max(1, Number(filters.page) || 1);
 
   // The text box commits on submit rather than binding straight to the URL,
@@ -236,6 +236,7 @@ function SearchPage() {
               </button>
               <label htmlFor="filter-sort" className="sr-only">Sort by</label>
               <select id="filter-sort" className="form-control w-auto py-1.5" value={sort} onChange={(e) => updateFilter("sort", e.target.value)}>
+                <option value="recommended">Recommended</option>
                 <option value="newest">Newest</option>
                 <option value="price_asc">Price: low to high</option>
                 <option value="price_desc">Price: high to low</option>

@@ -103,6 +103,21 @@ function ServiceDetails({ booking }) {
   );
 }
 
+// Shown to vendors (and admins): how this customer has behaved on past bookings.
+function CustomerReliability({ stats }) {
+  const { completed, cancelled, disputed, reliability } = stats;
+  const tone = reliability == null ? "text-muted" : reliability >= 80 ? "text-primary" : reliability >= 50 ? "text-amber-700" : "text-red-700";
+  return (
+    <div className="panel mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+      <div>
+        <h2 className="section-title text-base">Customer history</h2>
+        <p className="meta-text mt-0.5 text-xs">{completed} completed · {cancelled} cancelled · {disputed} disputed</p>
+      </div>
+      <p className={`font-semibold ${tone}`}>{reliability == null ? "New customer" : `${reliability}% reliable`}</p>
+    </div>
+  );
+}
+
 function BookingDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -236,6 +251,7 @@ function BookingDetailPage() {
       </div>
 
       <ServiceDetails booking={booking} />
+      {booking.customerStats && <CustomerReliability stats={booking.customerStats} />}
 
       {openDispute && (
         <div className="panel-muted mt-6 border-l-4 border-l-red-500">

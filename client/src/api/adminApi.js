@@ -51,3 +51,15 @@ export async function markPayoutPaid({ vendorId, paymentIds, reference }) {
   const { data } = await apiClient.post("/admin/payouts/mark-paid", { vendorId, paymentIds, reference });
   return data.payout;
 }
+
+// Listing moderation & featured placements.
+export async function getAdminListings(params = {}) {
+  const { data } = await apiClient.get("/admin/listings", { params });
+  return data; // { listings, total, page, limit }
+}
+
+// action: "hide" (needs reason) | "unhide" | "feature" (days 7/14/30/90) | "unfeature"
+export async function moderateListing(id, body) {
+  const { data } = await apiClient.patch(`/admin/listings/${id}/moderation`, body);
+  return data.listing;
+}

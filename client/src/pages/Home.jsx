@@ -24,7 +24,7 @@ function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  const featured = useQuery({ queryKey: ["featured-listings"], queryFn: () => searchListings({ limit: 6, sort: "rating" }) });
+  const featured = useQuery({ queryKey: ["featured-listings"], queryFn: () => searchListings({ limit: 6, sort: "recommended" }) });
 
   return (
     <div>

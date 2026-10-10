@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { BadgeCheck, Clock, MapPin } from "lucide-react";
+import { Award, BadgeCheck, Clock, MapPin } from "lucide-react";
+import SaveButton from "../components/SaveButton";
 import { useQuery } from "@tanstack/react-query";
 import { getVendorProfile } from "../api/vendorApi";
 import { searchListings } from "../api/listingApi";
@@ -12,6 +13,7 @@ import { SkeletonList } from "../components/QueryState";
 
 const TABS = [
   { id: "listings", label: "Listings" },
+  { id: "work", label: "Work" },
   { id: "reviews", label: "Reviews" },
   { id: "about", label: "About" },
 ];
@@ -55,7 +57,15 @@ function VendorProfilePage() {
     <div className="workspace-page">
       <div className="hero-panel mb-8">
         <p className="eyebrow text-accent">{vendor.category}</p>
-        <h1 className="mt-3 font-display text-4xl sm:text-5xl">{vendor.businessName}</h1>
+        <div className="mt-3 flex items-start justify-between gap-4">
+          <h1 className="font-display text-4xl sm:text-5xl">{vendor.businessName}</h1>
+          <SaveButton kind="vendors" id={vendor._id} label={vendor.businessName} className="shrink-0" />
+        </div>
+        {vendor.trustScore != null && (
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20" title="Based on ratings, completion and response rates, verification and disputes">
+            <Award size={14} aria-hidden="true" />Trust score {vendor.trustScore}/100
+          </p>
+        )}
         {vendor.serviceArea?.city && (
           <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/70">
             <MapPin size={14} aria-hidden="true" />
@@ -107,6 +117,26 @@ function VendorProfilePage() {
           </div>
           {listingsQuery.data?.listings.length === 0 && (
             <div className="empty-state">No active listings yet.</div>
+          )}
+        </section>
+      )}
+
+      {activeTab === "work" && (
+        <section id="panel-work" role="tabpanel" aria-labelledby="tab-work">
+          <h2 className="section-title mb-4">Past work</h2>
+          {vendor.portfolio?.length ? (
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {vendor.portfolio.map((item) => (
+                <li key={item.url}>
+                  <a href={item.url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-2xl bg-white shadow-soft">
+                    <img src={item.url} alt={item.caption || `Work by ${vendor.businessName}`} loading="lazy" decoding="async" className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
+                    {item.caption && <p className="truncate px-3 py-2 text-xs text-muted">{item.caption}</p>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="empty-state">This provider hasn&apos;t added photos of past work yet.</div>
           )}
         </section>
       )}

@@ -47,3 +47,9 @@ export async function removeTimeOff(entryId) {
   const res = await apiClient.delete(`/vendors/me/time-off/${entryId}`);
   return res.data;
 }
+
+// Provider analytics for the vendor dashboard.
+export async function getMyVendorStats() {
+  const res = await apiClient.get("/vendors/me/stats");
+  return res.data.stats;
+}

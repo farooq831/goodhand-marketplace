@@ -4,7 +4,9 @@ import {
   BarChart3,
   CalendarDays,
   ClipboardList,
+  Heart,
   LayoutDashboard,
+  LayoutList,
   ListChecks,
   MessageSquare,
   Scale,
@@ -23,6 +25,7 @@ export const NAV_BY_ROLE = {
   customer: [
     { to: "/search", title: "Browse services", desc: "Discover trusted local specialists.", icon: Search },
     { to: "/dashboard/customer/bookings", title: "My bookings", desc: "Track requests, work, and reviews.", icon: ClipboardList },
+    { to: "/dashboard/customer/saved", title: "Saved", desc: "Services and providers you saved.", icon: Heart },
     { to: "/dashboard/customer/messages", title: "Messages", desc: "Chat with your providers.", icon: MessageSquare },
   ],
   vendor: [
@@ -35,6 +38,7 @@ export const NAV_BY_ROLE = {
   ],
   admin: [
     { to: "/dashboard/admin/vendors", title: "Vendor verification", desc: "Approve pending providers.", icon: BadgeCheck },
+    { to: "/dashboard/admin/listings", title: "Listings", desc: "Moderate and feature services.", icon: LayoutList },
     { to: "/dashboard/admin/disputes", title: "Dispute queue", desc: "Resolve held payments.", icon: Scale },
     { to: "/dashboard/admin/payouts", title: "Payouts", desc: "Record money sent to vendors.", icon: Banknote },
     { to: "/dashboard/admin/analytics", title: "Analytics", desc: "Marketplace GMV and volume.", icon: BarChart3 },

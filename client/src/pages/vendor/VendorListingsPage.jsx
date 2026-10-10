@@ -48,7 +48,13 @@ function VendorListingsPage() {
               <p className="meta-text mt-1 flex items-center gap-2">
                 <span className="font-medium text-primary">Rs {listing.price}</span>
                 <span aria-hidden="true">·</span>
-                <span className={listing.isActive ? "text-primary" : "text-muted"}>{listing.isActive ? "Active" : "Paused"}</span>
+                {listing.moderation?.hidden ? (
+                  <span className="font-medium text-red-700" title={listing.moderation.reason}>Hidden by our team — {listing.moderation.reason}</span>
+                ) : (
+                  <span className={listing.isActive ? "text-primary" : "text-muted"}>{listing.isActive ? "Active" : "Paused"}</span>
+                )}
+                {listing.featuredUntil && new Date(listing.featuredUntil) > new Date() && <span className="ml-2 font-medium text-amber-700">· Featured</span>}
+                {listing.views > 0 && <span className="meta-text ml-2">· {listing.views} views</span>}
               </p>
             </div>
             <div className="flex items-center gap-3 text-sm">

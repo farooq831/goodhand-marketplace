@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight, Clock, ShieldCheck, Store } from "lucide-rea
 import { useAuth } from "../context/AuthContext";
 import { getMyVendorProfile } from "../api/vendorApi";
 import { NAV_BY_ROLE } from "../utils/dashboardNav";
+import VendorStatsPanel from "../components/VendorStatsPanel";
 
 // Design.md §3.2: a vendor must see where they stand in onboarding before
 // anything else — no profile yet, waiting on admin approval, or live.
@@ -81,6 +82,7 @@ function DashboardPage() {
       </div>
 
       {user.role === "vendor" && <VendorStatusBanner />}
+      {user.role === "vendor" && <VendorStatsPanel />}
 
       <p className="section-title mb-3">Quick actions</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
