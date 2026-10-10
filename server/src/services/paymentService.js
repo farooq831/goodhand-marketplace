@@ -42,7 +42,9 @@ async function createPaymentIntent(customerId, bookingId) {
     metadata: { bookingId: String(booking._id) },
   });
 
-  const payment = await Payment.create({
+  let payment;
+  try {
+    payment = await Payment.create({
     bookingId: booking._id,
     stripePaymentIntentId: paymentIntent.id,
     amount,
@@ -50,9 +52,17 @@ async function createPaymentIntent(customerId, bookingId) {
     status: "held",
     heldAt: new Date(),
   });
+  } catch (err) {
+    // A concurrent request won the unique index — void our Stripe intent so
+    // no second authorization is left dangling on the customer's card.
+    if (err.code === 11000) {
+      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
+      throw new ApiError(409, "A payment has already been started for this booking");
+    }
+    throw err;
+  }
 
-  booking.paymentId = payment._id;
-  await booking.save();
+  await Booking.updateOne({ _id: booking._id }, { paymentId: payment._id });
 
   return { payment, clientSecret: paymentIntent.client_secret };
 }
@@ -74,16 +84,28 @@ async function confirmPayment(customerId, bookingId) {
   if (booking.status !== "pending") throw new ApiError(400, "Payment can only be started for a pending booking");
   if (booking.paymentId) throw new ApiError(409, "A payment has already been started for this booking");
 
-  const payment = await Payment.create({
-    bookingId: booking._id,
-    stripePaymentIntentId: `${DEMO_INTENT_PREFIX}${booking._id}_${Date.now()}`,
-    amount: booking.price,
-    commissionAmount: Math.round(booking.price * (COMMISSION_PERCENT / 100) * 100) / 100,
-    status: "held",
-    heldAt: new Date(),
-  });
-  booking.paymentId = payment._id;
-  await booking.save();
+  // A unique index on Payment.bookingId makes a concurrent second attempt
+  // (double-click, retry) fail here instead of creating a second escrow
+  // payment — the check above alone is a race.
+  let payment;
+  try {
+    payment = await Payment.create({
+      bookingId: booking._id,
+      stripePaymentIntentId: `${DEMO_INTENT_PREFIX}${booking._id}_${Date.now()}`,
+      amount: booking.price,
+      commissionAmount: Math.round(booking.price * (COMMISSION_PERCENT / 100) * 100) / 100,
+      status: "held",
+      heldAt: new Date(),
+    });
+  } catch (err) {
+    if (err.code === 11000) throw new ApiError(409, "A payment has already been started for this booking");
+    throw err;
+  }
+  const linked = await Booking.updateOne({ _id: booking._id, paymentId: null, status: "pending" }, { paymentId: payment._id });
+  if (!linked.modifiedCount) {
+    await Payment.deleteOne({ _id: payment._id });
+    throw new ApiError(409, "This booking changed while paying — please refresh");
+  }
 
   // The Stripe path notifies from the amount_capturable_updated webhook;
   // the demo path has no webhook, so it notifies here (PRD §5.8).
@@ -105,18 +127,31 @@ async function getBookingParticipants(bookingId) {
 // Architecture.md §7 step 3/4: capture (release to vendor) an escrowed
 // payment. Called from the admin release endpoint and the auto-release
 // cron job (jobs/releasePayments.js).
+// Moves a payment out of "held" in one atomic update, so when the release
+// job and an admin ruling (or two jobs on two instances) race, exactly one
+// caller wins and only that caller moves money. The loser gets the same
+// error it would have got if it had arrived second.
+async function claimHeld(bookingId, nextStatus, extra = {}) {
+  const claimed = await Payment.findOneAndUpdate({ bookingId, status: "held" }, { $set: { status: nextStatus, ...extra } }, { new: true });
+  if (claimed) return claimed;
+  const existing = await Payment.findOne({ bookingId });
+  if (!existing) throw new ApiError(404, "No payment found for this booking");
+  throw new ApiError(400, `Cannot ${nextStatus === "released" ? "release" : "refund"} a payment in status "${existing.status}"`);
+}
+
+// If Stripe fails after we claimed, put the payment back so it can be retried.
+async function unclaim(payment, fromStatus) {
+  await Payment.updateOne({ _id: payment._id, status: fromStatus }, { $set: { status: "held", releasedAt: null } });
+}
+
 async function releasePayment(bookingId) {
-  const payment = await Payment.findOne({ bookingId });
-  if (!payment) throw new ApiError(404, "No payment found for this booking");
-  if (payment.status !== "held") {
-    throw new ApiError(400, `Cannot release a payment in status "${payment.status}"`);
+  const payment = await claimHeld(bookingId, "released", { releasedAt: new Date() });
+  try {
+    if (!isDemoPayment(payment)) await stripe.paymentIntents.capture(payment.stripePaymentIntentId);
+  } catch (err) {
+    await unclaim(payment, "released");
+    throw err;
   }
-
-  if (!isDemoPayment(payment)) await stripe.paymentIntents.capture(payment.stripePaymentIntentId);
-
-  payment.status = "released";
-  payment.releasedAt = new Date();
-  await payment.save();
 
   const { vendorUserId } = await getBookingParticipants(payment.bookingId);
   await notificationService
@@ -133,16 +168,13 @@ async function releasePayment(bookingId) {
 // we only ever refund from "held". Called from the admin refund endpoint
 // and from updateBookingStatus's cancelled/declined side-effect.
 async function refundPayment(bookingId) {
-  const payment = await Payment.findOne({ bookingId });
-  if (!payment) throw new ApiError(404, "No payment found for this booking");
-  if (payment.status !== "held") {
-    throw new ApiError(400, `Cannot refund a payment in status "${payment.status}"`);
+  const payment = await claimHeld(bookingId, "refunded");
+  try {
+    if (!isDemoPayment(payment)) await stripe.paymentIntents.cancel(payment.stripePaymentIntentId);
+  } catch (err) {
+    await unclaim(payment, "refunded");
+    throw err;
   }
-
-  if (!isDemoPayment(payment)) await stripe.paymentIntents.cancel(payment.stripePaymentIntentId);
-
-  payment.status = "refunded";
-  await payment.save();
 
   const { customerUserId } = await getBookingParticipants(payment.bookingId);
   await notificationService

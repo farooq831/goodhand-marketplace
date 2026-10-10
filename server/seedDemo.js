@@ -3,6 +3,21 @@ const path = require("path");
 // can be pointed at a scratch database without touching the dev one.
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
+// The demo passwords below are published in the README. Seeding them into a
+// real (non-local) database would let anyone sign in as the admin, so for
+// any remote database every seeded account uses SEED_PASSWORD instead, and
+// the script refuses to run without a strong one.
+const IS_LOCAL_DB = /^mongodb:\/\/(127\.0\.0\.1|localhost)[:/]/.test(process.env.MONGODB_URI || "");
+if (!IS_LOCAL_DB && (process.env.SEED_PASSWORD || "").length < 12) {
+  console.error(
+    "Refusing to seed a non-local database with the public demo passwords.\n" +
+      "Set SEED_PASSWORD to a private password of at least 12 characters; every seeded account (including the admin) will use it."
+  );
+  process.exit(1);
+}
+const DEMO_PASSWORD = IS_LOCAL_DB ? "Demo1234" : process.env.SEED_PASSWORD;
+const ADMIN_PASSWORD = IS_LOCAL_DB ? "Admin1234" : process.env.SEED_PASSWORD;
+
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 const User = require("./src/models/User");
@@ -27,7 +42,7 @@ const services = [
 async function findOrCreateUser(service) {
   return User.findOneAndUpdate(
     { email: service.email },
-    { email: service.email, name: service.name, role: "vendor", passwordHash: await bcrypt.hash("Demo1234", 10), emailVerified: true, isVerified: true, status: "active" },
+    { email: service.email, name: service.name, role: "vendor", passwordHash: await bcrypt.hash(DEMO_PASSWORD, 10), emailVerified: true, isVerified: true, status: "active" },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 }
@@ -37,14 +52,14 @@ async function seed() {
   // Demo admin — self-signup as admin is blocked in authService, so seed one here.
   await User.findOneAndUpdate(
     { email: "admin@example.com" },
-    { email: "admin@example.com", name: "Demo Admin", role: "admin", passwordHash: await bcrypt.hash("Admin1234", 10), emailVerified: true, isVerified: true, status: "active" },
+    { email: "admin@example.com", name: "Demo Admin", role: "admin", passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10), emailVerified: true, isVerified: true, status: "active" },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   // A customer with a known password always exists for testing, even on a
   // database where the demo booking hangs off an existing real account.
   const demoCustomer = await User.findOneAndUpdate(
     { email: "demo.customer@example.com" },
-    { email: "demo.customer@example.com", name: "Demo Customer", role: "customer", passwordHash: await bcrypt.hash("Demo1234", 10), emailVerified: true, status: "active" },
+    { email: "demo.customer@example.com", name: "Demo Customer", role: "customer", passwordHash: await bcrypt.hash(DEMO_PASSWORD, 10), emailVerified: true, status: "active" },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   const customer = await User.findOne({ email: "omer@gmail.com" }) || demoCustomer;
@@ -52,7 +67,7 @@ async function seed() {
   // An unverified vendor so the admin verification queue has something in it.
   const pendingVendor = await User.findOneAndUpdate(
     { email: "demo.vendor.pending@example.com" },
-    { email: "demo.vendor.pending@example.com", name: "Kamran Ali", role: "vendor", passwordHash: await bcrypt.hash("Demo1234", 10), emailVerified: true, status: "active" },
+    { email: "demo.vendor.pending@example.com", name: "Kamran Ali", role: "vendor", passwordHash: await bcrypt.hash(DEMO_PASSWORD, 10), emailVerified: true, status: "active" },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   await VendorProfile.findOneAndUpdate(
@@ -105,8 +120,8 @@ async function seed() {
   }
   console.log(`Seeded ${services.length} realistic listings across ${new Set(services.map((service) => service.category)).size} categories.`);
   console.log(`Demo booking for ${customer.email}: ${booking._id}`);
-  console.log("Test accounts (password Demo1234 unless noted):");
-  console.log("  Admin            admin@example.com / Admin1234");
+  console.log(IS_LOCAL_DB ? "Test accounts (password Demo1234 unless noted):" : "Accounts (password = your SEED_PASSWORD):");
+  console.log(IS_LOCAL_DB ? "  Admin            admin@example.com / Admin1234" : "  Admin            admin@example.com");
   console.log("  Customer         demo.customer@example.com");
   console.log("  Vendor           demo.tutor.math@example.com (verified, has listings)");
   console.log("  Vendor (pending) demo.vendor.pending@example.com (awaiting admin approval)");

@@ -30,7 +30,9 @@ const paymentSchema = new mongoose.Schema({
   },
 });
 
-paymentSchema.index({ bookingId: 1 });
+// One payment per booking, enforced by the database: the guard against two
+// concurrent checkouts creating two escrow payments.
+paymentSchema.index({ bookingId: 1 }, { unique: true });
 // Payout queue / history and the release job.
 paymentSchema.index({ status: 1, "payout.status": 1, releasedAt: 1 });
 

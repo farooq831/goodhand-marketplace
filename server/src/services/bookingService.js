@@ -4,6 +4,7 @@ const VendorProfile = require("../models/VendorProfile");
 const ApiError = require("../utils/ApiError");
 const { blockingEntry } = require("../utils/timeOff");
 const trustService = require("./trustService");
+const { withLock, vendorDayKey } = require("../utils/locks");
 const { addMinutes, doRangesOverlap } = require("../utils/timeSlots");
 const { resolveBookingRequesterRole } = require("../utils/bookingAccess");
 const { getIO } = require("../sockets");
@@ -235,7 +236,7 @@ const EVENT_TEXT_BY_TRANSITION = {
 };
 
 async function updateBookingStatus(bookingId, requester, targetStatus, { files = [], note = "" } = {}) {
-  const booking = await Booking.findById(bookingId);
+  let booking = await Booking.findById(bookingId);
   if (!booking) throw new ApiError(404, "Booking not found");
 
   const { isCustomer, isVendor } = await resolveBookingRequesterRole(booking, requester);
@@ -265,39 +266,39 @@ async function updateBookingStatus(bookingId, requester, targetStatus, { files =
     throw new ApiError(400, "A reason is required for this action");
   }
 
-  if (transitionKey === "pending->accepted") {
-    // Re-check at accept time, not just at request time — another
-    // request for an overlapping slot could have been accepted since.
-    // Scoped to this one transition: "submitted->accepted" is a revision
-    // request on a booking that already holds the slot, so re-running the
-    // check there could 409 the customer out of asking for a fix.
-    await assertNoConflict(
-      booking.vendorId,
-      booking.slot.date,
-      booking.slot.startTime,
-      booking.slot.endTime,
-      booking._id
-    );
-  }
-
   const deliveredFiles = [];
   if (targetStatus === "submitted") {
     if (!files.length || files.some((file) => typeof file !== "string" || !file.trim())) {
       throw new ApiError(400, "At least one work file is required");
     }
     deliveredFiles.push(...files.map((file) => file.trim()));
-    booking.submittedFiles = deliveredFiles;
   }
 
-  booking.status = targetStatus;
-  booking.statusHistory.push({
-    status: targetStatus,
-    changedAt: new Date(),
-    changedBy: requester.id,
-    note: trimmedNote || null,
-    files: deliveredFiles,
-  });
-  await booking.save();
+  // Concurrency: the write only applies if the booking is still in the
+  // status we validated against. Without this, a customer cancelling while
+  // the vendor accepts could both "succeed" — the cancel refunds the
+  // escrow, the accept overwrites it, and the vendor works for free.
+  const fromStatus = booking.status;
+  const persist = async () => {
+    if (transitionKey === "pending->accepted") {
+      // Re-check at accept time, not just at request time — another
+      // request for an overlapping slot could have been accepted since.
+      // Scoped to this one transition: "submitted->accepted" is a revision
+      // request on a booking that already holds the slot.
+      await assertNoConflict(booking.vendorId, booking.slot.date, booking.slot.startTime, booking.slot.endTime, booking._id);
+    }
+    const update = {
+      $set: { status: targetStatus, ...(targetStatus === "submitted" ? { submittedFiles: deliveredFiles } : {}) },
+      $push: { statusHistory: { status: targetStatus, changedAt: new Date(), changedBy: requester.id, note: trimmedNote || null, files: deliveredFiles } },
+    };
+    const saved = await Booking.findOneAndUpdate({ _id: booking._id, status: fromStatus }, update, { new: true });
+    if (!saved) throw new ApiError(409, "This booking was just updated by someone else — refresh and try again");
+    return saved;
+  };
+  // Accepting claims the vendor's time: the conflict check and the write
+  // must be one critical section per vendor-day, or two overlapping
+  // requests accepted at the same moment both pass the check.
+  booking = transitionKey === "pending->accepted" ? await withLock(vendorDayKey(booking.vendorId, booking.slot.date), persist) : await persist();
   await trustService.recomputeTrustScore(booking.vendorId);
 
   // Design.md §3.1: checkout happens right after picking a slot, before

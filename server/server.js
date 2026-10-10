@@ -143,6 +143,12 @@ assertSafeConfig();
 const RUN_JOBS = process.env.RUN_JOBS !== "false";
 
 connectDB().then(async () => {
+  // Replace the old non-unique Payment.bookingId index with the unique one
+  // (the database-level guard against double payment). Fails loudly if
+  // existing data already contains duplicates that need cleaning up.
+  await require("./src/models/Payment")
+    .syncIndexes()
+    .catch((err) => console.error("PAYMENT INDEX SYNC FAILED — check for duplicate payments per booking:", err.message));
   await require("./src/services/authService")
     .backfillEmailVerified()
     .catch((err) => console.error("Email-verified backfill failed:", err.message));
