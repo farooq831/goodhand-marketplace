@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Goodhand slides</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --night: #18332F; --teal: #0F6E5F; --amber: #E8A33D; --snow: #fff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; }
+  body {
+    font-family: Inter, system-ui, sans-serif; color: var(--snow);
+    background: radial-gradient(circle at 82% 18%, rgba(232,163,61,.22), transparent 38%), linear-gradient(125deg, #102622 0%, var(--night) 45%, var(--teal) 100%);
+  }
+  section { display: none; position: absolute; inset: 0; padding: 72px 96px; flex-direction: column; justify-content: center; }
+  section.on { display: flex; }
+  .brand { position: absolute; top: 40px; left: 96px; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 22px; letter-spacing: -.01em; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--amber); }
+  .eyebrow { color: var(--amber); font-weight: 700; letter-spacing: .2em; text-transform: uppercase; font-size: 16px; }
+  h1 { font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 92px; line-height: .98; letter-spacing: -.02em; margin-top: 18px; }
+  h2 { font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 58px; line-height: 1.05; margin-top: 14px; }
+  .amber { color: var(--amber); }
+  p.lead { font-size: 26px; line-height: 1.5; color: rgba(255,255,255,.82); margin-top: 26px; max-width: 900px; }
+  .presenter { margin-top: 44px; display: flex; align-items: center; gap: 18px; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--amber); color: var(--night); display: grid; place-items: center; font-family: Fraunces, serif; font-size: 30px; font-weight: 600; }
+  .presenter b { display: block; font-size: 24px; }
+  .presenter span { color: rgba(255,255,255,.7); font-size: 18px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; margin-top: 40px; }
+  .card { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 22px; padding: 26px 28px; }
+  .card .ic { font-size: 30px; }
+  .card b { display: block; font-size: 24px; margin-top: 10px; }
+  .card span { display: block; color: rgba(255,255,255,.75); font-size: 19px; line-height: 1.45; margin-top: 6px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 36px; }
+  .col h3 { font-size: 26px; color: var(--amber); margin-bottom: 14px; }
+  .col li { list-style: none; font-size: 22px; line-height: 1.4; padding: 12px 0 12px 40px; position: relative; border-bottom: 1px solid rgba(255,255,255,.12); }
+  .col li::before { content: "✓"; position: absolute; left: 4px; top: 11px; width: 26px; height: 26px; border-radius: 50%; background: var(--amber); color: var(--night); font-weight: 700; font-size: 15px; display: grid; place-items: center; }
+  .cta { margin-top: 40px; display: inline-flex; align-self: flex-start; background: var(--amber); color: var(--night); font-weight: 700; font-size: 26px; padding: 18px 34px; border-radius: 999px; }
+  .roles { display: flex; gap: 14px; margin-top: 26px; }
+  .roles span { border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 8px 18px; font-size: 18px; color: rgba(255,255,255,.85); }
+  /* staggered entrance */
+  .on .in { opacity: 0; transform: translateY(18px); animation: up .7s ease-out forwards; }
+  .on .in:nth-child(2) { animation-delay: .25s; } .on .in:nth-child(3) { animation-delay: .5s; }
+  .on .in:nth-child(4) { animation-delay: .75s; } .on .in:nth-child(5) { animation-delay: 1s; } .on .in:nth-child(6) { animation-delay: 1.25s; }
+  .on .grid .card { opacity: 0; transform: translateY(18px); animation: up .6s ease-out forwards; }
+  .on .grid .card:nth-child(1) { animation-delay: 1.2s; } .on .grid .card:nth-child(2) { animation-delay: 3.5s; }
+  .on .grid .card:nth-child(3) { animation-delay: 6s; } .on .grid .card:nth-child(4) { animation-delay: 9s; }
+  .on .col li { opacity: 0; animation: up .5s ease-out forwards; }
+  .on .col:nth-child(1) li:nth-child(1) { animation-delay: 4.6s; } .on .col:nth-child(1) li:nth-child(2) { animation-delay: 6.2s; } .on .col:nth-child(1) li:nth-child(3) { animation-delay: 7.8s; }
+  .on .col:nth-child(2) li:nth-child(1) { animation-delay: 13.4s; } .on .col:nth-child(2) li:nth-child(2) { animation-delay: 15.4s; } .on .col:nth-child(2) li:nth-child(3) { animation-delay: 18.2s; }
+  @keyframes up { to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+  <section id="title">
+    <div class="brand"><span class="dot"></span>Goodhand</div>
+    <p class="eyebrow in">Trusted local services · Pakistan</p>
+    <h1 class="in">Good people.<br /><span class="amber">Good work.</span></h1>
+    <p class="lead in">Find, book and pay verified local providers — with your payment protected until the job is done.</p>
+    <div class="presenter in"><div class="avatar">M</div><div><b>Muhammad Farooq</b><span>Founder, Goodhand</span></div></div>
+  </section>
+
+  <section id="problem">
+    <div class="brand"><span class="dot"></span>Goodhand</div>
+    <p class="eyebrow in">The problem today</p>
+    <h2 class="in">Finding good help shouldn't<br />be a gamble.</h2>
+    <div class="grid">
+      <div class="card"><div class="ic">💬</div><b>WhatsApp groups &amp; word of mouth</b><span>Conflicting recommendations, no way to compare.</span></div>
+      <div class="card"><div class="ic">⭐</div><b>No real reviews</b><span>Anyone can claim to be the best.</span></div>
+      <div class="card"><div class="ic">💵</div><b>Cash with no protection</b><span>Pay first and hope the job gets done.</span></div>
+      <div class="card"><div class="ic">📓</div><b>Paper diaries</b><span>Missed appointments and double bookings.</span></div>
+    </div>
+  </section>
+
+  <section id="benefits">
+    <div class="brand"><span class="dot"></span>Goodhand</div>
+    <p class="eyebrow in">Why move to Goodhand</p>
+    <h2 class="in">Safer for customers.<br /><span class="amber">Better for providers.</span></h2>
+    <div class="cols">
+      <div class="col"><h3>For customers</h3><ul><li>Verified, CNIC-checked providers</li><li>Honest reviews from real bookings</li><li>Payment held until the job is done</li></ul></div>
+      <div class="col"><h3>For providers</h3><ul><li>Real, already-paid booking requests</li><li>A calendar that prevents double booking</li><li>A reputation that grows with every job</li></ul></div>
+    </div>
+  </section>
+
+  <section id="end">
+    <div class="brand"><span class="dot"></span>Goodhand</div>
+    <p class="eyebrow in">Join today — it's free</p>
+    <h1 class="in">The safer way to<br /><span class="amber">get things done.</span></h1>
+    <div class="roles in"><span>Customers</span><span>Tutors</span><span>Home repair</span><span>Photographers</span><span>Event planners</span><span>Cleaners</span></div>
+    <span class="cta in">Create your free account</span>
+    <div class="presenter in"><div class="avatar">M</div><div><b>Muhammad Farooq</b><span>Founder, Goodhand</span></div></div>
+  </section>
+
+  <script>
+    const show = () => {
+      const id = location.hash.slice(1) || "title";
+      document.querySelectorAll("section").forEach((s) => s.classList.toggle("on", s.id === id));
+    };
+    addEventListener("hashchange", show);
+    show();
+  </script>
+</body>
+</html>

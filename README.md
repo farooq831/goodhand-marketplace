@@ -6,6 +6,17 @@ Goodhand is a full-stack MERN marketplace that connects customers with local tut
 
 ![Goodhand home page](docs/screenshots/home.png)
 
+## Product walkthrough video
+
+[![Watch the Goodhand walkthrough](docs/video/poster.jpg)](docs/video/goodhand-walkthrough.mp4)
+
+The video runs 5 minutes and is narrated by Muhammad Farooq, the founder. It walks through all three accounts in the running app:
+- **Customer:** search, booking, escrow checkout and chat.
+- **Provider:** accepting paid requests, the calendar, earnings and verification.
+- **Admin:** vendor review, disputes, payouts and the audit log.
+
+The narration uses a synthetic voice, and subtitles are burned in. The [subtitles file](docs/video/goodhand-walkthrough.srt) and [narration script](docs/video/SCRIPT.md) are also available. The scripts that rebuild the video are in [docs/video/source](docs/video/source/).
+
 ## Screenshots
 
 | Search with filters | Checkout into escrow |
