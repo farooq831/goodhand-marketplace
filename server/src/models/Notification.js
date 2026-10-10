@@ -15,5 +15,8 @@ const notificationSchema = new mongoose.Schema({
 
 notificationSchema.index({ userId: 1, createdAt: -1 });
 notificationSchema.index({ userId: 1, isRead: 1 });
+// Notifications are ephemeral; drop them after 180 days so the collection
+// (the fastest-growing one) doesn't grow forever.
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
 
 module.exports = mongoose.model("Notification", notificationSchema);

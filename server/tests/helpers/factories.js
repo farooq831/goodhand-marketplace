@@ -84,6 +84,7 @@ export async function makeBooking({ listing, customer, vendorProfile, status = "
 export async function makePayment(booking, overrides = {}) {
   return Payment.create({
     bookingId: booking._id,
+    vendorId: booking.vendorId,
     amount: overrides.amount ?? booking.price,
     commissionAmount: overrides.commissionAmount ?? booking.price * 0.1,
     status: overrides.status || "held",

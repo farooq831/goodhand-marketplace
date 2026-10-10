@@ -5,6 +5,9 @@ const mongoose = require("mongoose");
 // not a generic createdAt/updatedAt pair.
 const paymentSchema = new mongoose.Schema({
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: "Booking", required: true },
+  // Copied from the booking so per-vendor money totals are one indexed
+  // aggregation instead of "list every booking this vendor ever had".
+  vendorId: { type: mongoose.Schema.Types.ObjectId, ref: "VendorProfile", default: null },
   stripePaymentIntentId: { type: String, required: true, unique: true },
   // Full booking price held in escrow. Vendor payout at release time is
   // amount - commissionAmount.
@@ -16,6 +19,10 @@ const paymentSchema = new mongoose.Schema({
     default: "held",
   },
   heldAt: { type: Date, default: null },
+  // When the escrow may be released: set when the booking completes (+grace),
+  // cleared if it is disputed. The release job reads only this index, so it
+  // stays fast no matter how many past bookings exist.
+  releaseAfter: { type: Date, default: null },
   releasedAt: { type: Date, default: null },
   // Money actually leaving the platform for the vendor (PRD §6: manual
   // payouts in v1). Only meaningful once status is "released". The method
@@ -33,7 +40,9 @@ const paymentSchema = new mongoose.Schema({
 // One payment per booking, enforced by the database: the guard against two
 // concurrent checkouts creating two escrow payments.
 paymentSchema.index({ bookingId: 1 }, { unique: true });
-// Payout queue / history and the release job.
+paymentSchema.index({ status: 1, releaseAfter: 1 });
+paymentSchema.index({ vendorId: 1, status: 1 });
+// Payout queue / history.
 paymentSchema.index({ status: 1, "payout.status": 1, releasedAt: 1 });
 
 module.exports = mongoose.model("Payment", paymentSchema);

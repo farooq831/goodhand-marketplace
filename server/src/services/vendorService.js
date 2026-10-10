@@ -270,15 +270,25 @@ async function getMyStats(userId) {
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
 
-  const [listingAgg, statusCounts, bookingIds] = await Promise.all([
+  const [listingAgg, statusCounts, money] = await Promise.all([
     Listing.aggregate([{ $match: { vendorId: profile._id } }, { $group: { _id: null, views: { $sum: "$views" }, total: { $sum: 1 }, active: { $sum: { $cond: ["$isActive", 1, 0] } } } }]),
     Booking.aggregate([{ $match: { vendorId: profile._id } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
-    Booking.find({ vendorId: profile._id }).distinct("_id"),
+    // All money buckets in one indexed pass over this vendor's payments.
+    Payment.aggregate([
+      { $match: { vendorId: profile._id } },
+      {
+        $group: {
+          _id: null,
+          held: { $sum: { $cond: [{ $in: ["$status", ["held", "disputed"]] }, { $subtract: ["$amount", "$commissionAmount"] }, 0] } },
+          awaiting: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "released"] }, { $ne: ["$payout.status", "paid"] }] }, { $subtract: ["$amount", "$commissionAmount"] }, 0] } },
+          paidOut: { $sum: { $cond: [{ $eq: ["$payout.status", "paid"] }, { $subtract: ["$amount", "$commissionAmount"] }, 0] } },
+          month: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "released"] }, { $gte: ["$releasedAt", monthStart] }] }, { $subtract: ["$amount", "$commissionAmount"] }, 0] } },
+        },
+      },
+    ]),
   ]);
-  const earned = await Payment.aggregate([
-    { $match: { bookingId: { $in: bookingIds }, status: "released", releasedAt: { $gte: monthStart } } },
-    { $group: { _id: null, net: { $sum: { $subtract: ["$amount", "$commissionAmount"] } } } },
-  ]);
+  const m = money[0] || {};
+  const round = (n) => Math.round((n || 0) * 100) / 100;
   const count = (s) => statusCounts.find((r) => r._id === s)?.n || 0;
   const requests = statusCounts.reduce((sum, r) => sum + r.n, 0);
   const accepted = count("accepted") + count("submitted") + count("completed") + count("disputed");
@@ -297,7 +307,8 @@ async function getMyStats(userId) {
     trustScore: profile.trustScore,
     avgRating: profile.avgRating,
     reviewCount: profile.reviewCount,
-    earnedThisMonth: Math.round((earned[0]?.net || 0) * 100) / 100,
+    earnedThisMonth: round(m.month),
+    earnings: { held: round(m.held), awaiting: round(m.awaiting), paidOut: round(m.paidOut) },
   };
 }
 

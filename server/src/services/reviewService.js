@@ -50,11 +50,11 @@ async function respondToReview(reviewId, vendorUserId, response) {
 }
 
 function getVendorReviews(vendorId) {
-  return Review.find({ vendorId, authorRole: { $ne: "vendor" } }).sort({ createdAt: -1 }).populate("customerId", "name avatarUrl");
+  return Review.find({ vendorId, authorRole: { $ne: "vendor" } }).sort({ createdAt: -1 }).limit(50).populate("customerId", "name avatarUrl");
 }
 
 function getCustomerReviews(customerId) {
-  return Review.find({ customerId, authorRole: "vendor" }).sort({ createdAt: -1 }).populate("vendorId", "businessName");
+  return Review.find({ customerId, authorRole: "vendor" }).sort({ createdAt: -1 }).limit(50).populate("vendorId", "businessName");
 }
 
 async function recomputeVendorRating(vendorId) {

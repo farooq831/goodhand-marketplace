@@ -6,7 +6,10 @@ const require = createRequire(import.meta.url);
 
 const paymentService = require("../src/services/paymentService.js");
 const bookingService = require("../src/services/bookingService.js");
-const { releaseEligiblePayments, autoCompleteStaleDeliveries } = require("../src/jobs/releasePayments.js");
+const { releaseEligiblePayments: runRelease, backfillReleaseAfter, autoCompleteStaleDeliveries } = require("../src/jobs/releasePayments.js");
+// Fixtures are written straight to the DB (no state machine), so derive
+// releaseAfter the way the startup migration does before each run.
+const releaseEligiblePayments = async () => { await backfillReleaseAfter(); return runRelease(); };
 const Notification = require("../src/models/Notification.js");
 
 async function setup(status = "pending") {
@@ -164,5 +167,32 @@ describe("release job housekeeping", () => {
     console.error = (...args) => errors.push(args.join(" "));
     try { await releaseEligiblePayments(); } finally { console.error = original; }
     expect(errors.filter((e) => e.includes("Auto-release failed"))).toHaveLength(0);
+  });
+});
+
+describe("escrow timing (releaseAfter) and migrations", () => {
+  const jobs = require("../src/jobs/releasePayments.js");
+
+  it("completing starts the countdown, a dispute stops it, and only due payments are released", async () => {
+    const ctx = await setup("submitted");
+    const payment = await makePayment(ctx.booking, { stripePaymentIntentId: `demo_${ctx.booking._id}_x` });
+    await Booking.updateOne({ _id: ctx.booking._id }, { paymentId: payment._id });
+
+    await bookingService.updateBookingStatus(ctx.booking._id, ctx.customerReq, "completed");
+    const afterComplete = await Payment.findById(payment._id);
+    expect(afterComplete.releaseAfter.getTime()).toBeGreaterThan(Date.now() + 23 * 3600 * 1000);
+    expect(await jobs.releaseEligiblePayments()).toBe(0); // not due yet
+
+    await bookingService.updateBookingStatus(ctx.booking._id, ctx.customerReq, "disputed", { note: "Missing pages" });
+    expect((await Payment.findById(payment._id)).releaseAfter).toBeNull();
+    expect(await jobs.releaseEligiblePayments(new Date(Date.now() + 48 * 3600 * 1000))).toBe(0); // disputed: never auto-released
+  });
+
+  it("vendor backfill visits each payment once, even when its booking is gone", async () => {
+    const ctx = await setup("completed");
+    const good = await makePayment(ctx.booking, { vendorId: null, stripePaymentIntentId: `demo_${ctx.booking._id}_g` });
+    await Payment.create({ bookingId: new (require("mongoose").Types.ObjectId)(), amount: 10, commissionAmount: 1, status: "held", stripePaymentIntentId: "demo_orphan" });
+    await expect(jobs.backfillPaymentVendors()).resolves.toBe(1);
+    expect(String((await Payment.findById(good._id)).vendorId)).toBe(String(ctx.booking.vendorId));
   });
 });

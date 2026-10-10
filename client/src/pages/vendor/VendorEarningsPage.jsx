@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Banknote, CheckCircle2, Clock, Hourglass, Undo2 } from "lucide-react";
 import { getMyBookings } from "../../api/bookingApi";
-import { getMyVendorProfile, updateVendorProfile } from "../../api/vendorApi";
+import { getMyVendorProfile, getMyVendorStats, updateVendorProfile } from "../../api/vendorApi";
 import { LoadError, SkeletonList, errorMessage } from "../../components/QueryState";
 
 const rs = (n) => `Rs ${Number(n || 0).toLocaleString()}`;
@@ -98,12 +98,11 @@ function VendorEarningsPage() {
   const { data: bookings, isLoading, isError, error, refetch } = useQuery({ queryKey: ["my-bookings"], queryFn: () => getMyBookings() });
   const { data: profile } = useQuery({ queryKey: ["my-vendor-profile"], queryFn: getMyVendorProfile });
 
+  const { data: stats } = useQuery({ queryKey: ["my-vendor-stats"], queryFn: getMyVendorStats });
   const withPayments = (bookings || []).filter((b) => b.paymentId);
-  const totals = { held: 0, awaiting: 0, paid: 0 };
-  for (const b of withPayments) {
-    const key = stageOf(b.paymentId).key;
-    if (key in totals) totals[key] += net(b.paymentId);
-  }
+  // Totals come from a server-side aggregation over every payment; the list
+  // below only shows recent bookings, so summing it would undercount.
+  const totals = { held: stats?.earnings?.held ?? 0, awaiting: stats?.earnings?.awaiting ?? 0, paid: stats?.earnings?.paidOut ?? 0 };
 
   return (
     <div className="workspace-page">

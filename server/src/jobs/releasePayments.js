@@ -18,26 +18,67 @@ const AUTO_COMPLETE_DAYS = Number(process.env.AUTO_COMPLETE_DAYS || 3);
 
 const latestEntry = (booking, status) => [...booking.statusHistory].reverse().find((h) => h.status === status);
 
-async function releaseEligiblePayments() {
-  const cutoff = new Date(Date.now() - GRACE_HOURS * 60 * 60 * 1000);
-  const candidates = await Booking.find({ status: "completed", paymentId: { $ne: null } }).populate("paymentId", "status");
+const Payment = require("../models/Payment");
+const RELEASE_BATCH = 500;
 
-  for (const booking of candidates) {
-    // Already released or refunded: nothing to do. Without this, every
-    // past booking logged a "Cannot release" error on every hourly run.
-    if (booking.paymentId?.status !== "held") continue;
-    const completedEntry = latestEntry(booking, "completed");
-    if (!completedEntry || completedEntry.changedAt > cutoff) continue;
-
+// Reads only payments whose release time has passed (index on status +
+// releaseAfter). It used to load every completed booking ever made on
+// every run, which gets slower forever as the platform grows.
+async function releaseEligiblePayments(now = new Date()) {
+  const due = await Payment.find({ status: "held", releaseAfter: { $ne: null, $lte: now } }).select("bookingId").limit(RELEASE_BATCH).lean();
+  for (const { bookingId } of due) {
+    // Defensive: never release a booking that isn't completed (e.g. a
+    // dispute opened between setting releaseAfter and now).
+    const booking = await Booking.findById(bookingId).select("status");
+    if (booking?.status !== "completed") {
+      await Payment.updateOne({ bookingId, status: "held" }, { releaseAfter: null });
+      continue;
+    }
     try {
-      await paymentService.releasePayment(booking._id);
-      console.log(`Auto-released payment for booking ${booking._id}`);
+      await paymentService.releasePayment(bookingId);
+      console.log(`Auto-released payment for booking ${bookingId}`);
     } catch (err) {
-      // A transient Stripe error — log and move on; the next run retries
-      // automatically since this query re-evaluates every time.
-      console.error(`Auto-release failed for booking ${booking._id}:`, err.message);
+      // A transient Stripe error — the payment stays held with its
+      // releaseAfter, so the next run retries automatically.
+      console.error(`Auto-release failed for booking ${bookingId}:`, err.message);
     }
   }
+  return due.length;
+}
+
+// One-off migration: payments created before Payment.vendorId existed.
+async function backfillPaymentVendors() {
+  // Walks forward by _id so a payment whose booking no longer exists (which
+  // stays null) is visited once, never re-fetched in an endless loop.
+  let fixed = 0;
+  let lastId = null;
+  for (;;) {
+    const batch = await Payment.find({ vendorId: null, ...(lastId ? { _id: { $gt: lastId } } : {}) }).sort({ _id: 1 }).select("bookingId").limit(500).lean();
+    if (!batch.length) return fixed;
+    lastId = batch[batch.length - 1]._id;
+    const bookings = await Booking.find({ _id: { $in: batch.map((p) => p.bookingId) } }).select("vendorId").lean();
+    const vendorOf = new Map(bookings.map((b) => [String(b._id), b.vendorId]));
+    const ops = batch
+      .filter((p) => vendorOf.get(String(p.bookingId)))
+      .map((p) => ({ updateOne: { filter: { _id: p._id }, update: { $set: { vendorId: vendorOf.get(String(p.bookingId)) } } } }));
+    if (ops.length) await Payment.bulkWrite(ops);
+    fixed += ops.length;
+  }
+}
+
+// One-off migration for bookings completed before releaseAfter existed:
+// derive it from the completion time in statusHistory. Bounded by
+// in-flight (held) payments only.
+async function backfillReleaseAfter() {
+  const held = await Payment.find({ status: "held", releaseAfter: null }).select("bookingId").lean();
+  if (!held.length) return 0;
+  const completed = await Booking.find({ _id: { $in: held.map((p) => p.bookingId) }, status: "completed" }).select("statusHistory");
+  for (const booking of completed) {
+    const entry = latestEntry(booking, "completed");
+    const at = entry ? new Date(entry.changedAt).getTime() : Date.now();
+    await Payment.updateOne({ bookingId: booking._id, status: "held", releaseAfter: null }, { releaseAfter: new Date(at + GRACE_HOURS * 60 * 60 * 1000) });
+  }
+  return completed.length;
 }
 
 async function autoCompleteStaleDeliveries() {
@@ -87,4 +128,4 @@ function startPaymentReleaseJob() {
   });
 }
 
-module.exports = { startPaymentReleaseJob, releaseEligiblePayments, autoCompleteStaleDeliveries, AUTO_COMPLETE_DAYS };
+module.exports = { startPaymentReleaseJob, releaseEligiblePayments, backfillReleaseAfter, backfillPaymentVendors, autoCompleteStaleDeliveries, AUTO_COMPLETE_DAYS };

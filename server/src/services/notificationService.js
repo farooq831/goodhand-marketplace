@@ -27,7 +27,7 @@ async function notifyRole(role, type, payload = {}) {
 async function getMyNotifications(userId, { unreadOnly } = {}) {
   const filter = { userId };
   if (unreadOnly) filter.isRead = false;
-  return Notification.find(filter).sort({ createdAt: -1 });
+  return Notification.find(filter).sort({ createdAt: -1 }).limit(50);
 }
 
 async function markAsRead(notificationId, userId) {

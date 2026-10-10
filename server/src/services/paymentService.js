@@ -46,6 +46,7 @@ async function createPaymentIntent(customerId, bookingId) {
   try {
     payment = await Payment.create({
     bookingId: booking._id,
+    vendorId: booking.vendorId,
     stripePaymentIntentId: paymentIntent.id,
     amount,
     commissionAmount,
@@ -93,6 +94,7 @@ async function confirmPayment(customerId, bookingId) {
   try {
     payment = await Payment.create({
       bookingId: booking._id,
+      vendorId: booking.vendorId,
       stripePaymentIntentId: `${DEMO_INTENT_PREFIX}${booking._id}_${Date.now()}`,
       amount: booking.price,
       commissionAmount: Math.round(booking.price * (COMMISSION_PERCENT / 100) * 100) / 100,

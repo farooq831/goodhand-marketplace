@@ -77,7 +77,11 @@ app.post(
   paymentController.handleWebhook
 );
 
-app.use(express.json({ limit: "10mb" }));
+// Small default body limit: a 10 MB limit on every route let a handful of
+// concurrent requests exhaust memory. Only uploads (base64 files) get more;
+// the global parser skips bodies that are already parsed.
+app.use("/api/uploads", express.json({ limit: "12mb" }));
+app.use(express.json({ limit: "100kb" }));
 app.use(require("./src/middleware/sanitizeRequest"));
 
 // Dev-only local upload fallback (see uploadController). Never active in
@@ -165,6 +169,8 @@ connectDB().then(async () => {
   if (RUN_JOBS) {
     // Fill in real trust scores for existing vendors without blocking startup.
     require("./src/services/trustService").recomputeAll().catch((err) => console.error("Trust score backfill failed:", err.message));
+    await require("./src/jobs/releasePayments").backfillPaymentVendors().catch((err) => console.error("Payment vendor backfill failed:", err.message));
+    await require("./src/jobs/releasePayments").backfillReleaseAfter().catch((err) => console.error("releaseAfter backfill failed:", err.message));
     startPaymentReleaseJob();
     require("./src/jobs/bookingReminders").startBookingReminderJob();
   }

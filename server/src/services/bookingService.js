@@ -4,6 +4,7 @@ const VendorProfile = require("../models/VendorProfile");
 const ApiError = require("../utils/ApiError");
 const { blockingEntry } = require("../utils/timeOff");
 const trustService = require("./trustService");
+const Payment = require("../models/Payment");
 const { withLock, vendorDayKey } = require("../utils/locks");
 const { addMinutes, doRangesOverlap } = require("../utils/timeSlots");
 const { resolveBookingRequesterRole } = require("../utils/bookingAccess");
@@ -128,9 +129,13 @@ async function getBookingById(id, requester) {
   return booking;
 }
 
+// Bounded: the newest MAX_MY_BOOKINGS. Totals that must cover everything
+// (earnings) are aggregated server-side in vendorService.getMyStats.
+const MAX_MY_BOOKINGS = 300;
+
 async function getMyBookings(requester, statusFilter) {
   const filter = {};
-  if (statusFilter) filter.status = statusFilter;
+  if (typeof statusFilter === "string" && statusFilter) filter.status = statusFilter;
 
   if (requester.role === "vendor") {
     const vendorProfile = await VendorProfile.findOne({ userId: requester.id }).select("_id");
@@ -142,6 +147,7 @@ async function getMyBookings(requester, statusFilter) {
 
   return Booking.find(filter)
     .sort({ "slot.date": -1 })
+    .limit(MAX_MY_BOOKINGS)
     .populate("listingId", "title price durationMinutes")
     .populate("customerId", "name")
     .populate("vendorId", "businessName")
@@ -300,6 +306,11 @@ async function updateBookingStatus(bookingId, requester, targetStatus, { files =
   // requests accepted at the same moment both pass the check.
   booking = transitionKey === "pending->accepted" ? await withLock(vendorDayKey(booking.vendorId, booking.slot.date), persist) : await persist();
   await trustService.recomputeTrustScore(booking.vendorId);
+  // Escrow timing: completing starts the release countdown; a dispute stops it.
+  if (targetStatus === "completed" || targetStatus === "disputed") {
+    const graceMs = Number(process.env.PAYMENT_RELEASE_GRACE_HOURS || 24) * 60 * 60 * 1000;
+    await Payment.updateOne({ bookingId: booking._id, status: "held" }, { releaseAfter: targetStatus === "completed" ? new Date(Date.now() + graceMs) : null });
+  }
 
   // Design.md §3.1: checkout happens right after picking a slot, before
   // the vendor has responded — so a held payment can exist even at
