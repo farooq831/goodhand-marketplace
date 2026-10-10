@@ -29,7 +29,7 @@ function LoginPage() {
 
   return (
     <div className="auth-layout">
-      <aside className="auth-aside"><div><span className="eyebrow text-accent">Welcome back</span><h2 className="mt-6 font-display text-6xl leading-none">Good work<br /><span className="text-accent">starts here.</span></h2></div><p className="max-w-xs text-sm leading-6 text-white/60">A considered marketplace for trusted local specialists and the people who need them.</p></aside>
+      <aside className="auth-aside"><div><span className="eyebrow text-accent">Welcome back</span><h2 className="mt-6 font-display text-6xl leading-none">Good work<br /><span className="text-accent">starts here.</span></h2></div><p className="max-w-xs text-sm leading-6 text-snow/60">A considered marketplace for trusted local specialists and the people who need them.</p></aside>
       <div className="auth-form">
       <p className="eyebrow">Your workspace</p>
       <h1 className="mt-3 font-display text-4xl text-ink">Log in</h1>

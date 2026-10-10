@@ -62,21 +62,21 @@ function VendorProfilePage() {
           <SaveButton kind="vendors" id={vendor._id} label={vendor.businessName} className="shrink-0" />
         </div>
         {vendor.trustScore != null && (
-          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20" title="Based on ratings, completion and response rates, verification and disputes">
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-snow/10 px-3 py-1 text-xs font-semibold text-snow ring-1 ring-snow/20" title="Based on ratings, completion and response rates, verification and disputes">
             <Award size={14} aria-hidden="true" />Trust score {vendor.trustScore}/100
           </p>
         )}
         {vendor.serviceArea?.city && (
-          <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/70">
+          <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-snow/70">
             <MapPin size={14} aria-hidden="true" />
             {vendor.serviceArea.city}
           </p>
         )}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <RatingStars rating={vendor.avgRating} reviewCount={vendor.reviewCount} />
-          <span className="text-sm text-white/65">{responseRate}</span>
+          <span className="text-sm text-snow/65">{responseRate}</span>
           {vendor.isVerified ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-white/20">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-snow/10 px-2.5 py-1 text-[11px] font-semibold text-snow ring-1 ring-snow/20">
               <BadgeCheck size={14} aria-hidden="true" /> Verified
             </span>
           ) : (
@@ -85,7 +85,7 @@ function VendorProfilePage() {
             </span>
           )}
         </div>
-        {vendor.description && <p className="mt-4 max-w-2xl text-sm leading-6 text-white/75">{vendor.description}</p>}
+        {vendor.description && <p className="mt-4 max-w-2xl text-sm leading-6 text-snow/75">{vendor.description}</p>}
       </div>
 
       <div className="mb-6 flex gap-6 border-b border-black/5" role="tablist" aria-label="Vendor profile sections">

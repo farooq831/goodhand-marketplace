@@ -11,8 +11,8 @@ function NotFoundPage() {
       <div className="hero-panel">
         <p className="eyebrow text-accent">404</p>
         <h1 className="mt-3 font-display text-4xl sm:text-5xl">We couldn&apos;t find that page.</h1>
-        <p className="mt-4 max-w-xl text-sm leading-6 text-white/75">
-          <code className="rounded bg-white/10 px-1.5 py-0.5 text-white/90">{location.pathname}</code>{" "}
+        <p className="mt-4 max-w-xl text-sm leading-6 text-snow/75">
+          <code className="rounded bg-snow/10 px-1.5 py-0.5 text-snow/90">{location.pathname}</code>{" "}
           doesn&apos;t exist. It may have moved, or the link may be out of date.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">

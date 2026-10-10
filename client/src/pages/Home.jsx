@@ -32,8 +32,8 @@ function Home() {
         <div className="hero-band__inner">
           <div className="max-w-3xl">
             <p className="eyebrow text-accent">Trusted local help, thoughtfully found</p>
-            <h1 className="mt-5 font-display text-5xl leading-[0.98] tracking-tight text-white sm:text-7xl">Good people.<br /><span className="text-accent">Good work.</span></h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-white/80 sm:text-lg">Find trusted local specialists for the work that matters, from a lesson at home to the perfect celebration.</p>
+            <h1 className="mt-5 font-display text-5xl leading-[0.98] tracking-tight text-snow sm:text-7xl">Good people.<br /><span className="text-accent">Good work.</span></h1>
+            <p className="mt-6 max-w-xl text-base leading-7 text-snow/80 sm:text-lg">Find trusted local specialists for the work that matters, from a lesson at home to the perfect celebration.</p>
             <form onSubmit={(event) => { event.preventDefault(); navigate(`/search${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`); }} className="mt-9 flex max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl sm:flex-row" role="search">
               <label htmlFor="home-search" className="sr-only">What do you need help with?</label>
               <div className="relative flex-1">
@@ -42,7 +42,7 @@ function Home() {
               </div>
               <button type="submit" className="button button--accent min-h-12">Find a specialist</button>
             </form>
-            <p className="mt-5 flex items-center gap-2 text-sm text-white/70"><ShieldCheck size={16} className="text-accent" aria-hidden="true" />Verified vendors. Protected payments.</p>
+            <p className="mt-5 flex items-center gap-2 text-sm text-snow/70"><ShieldCheck size={16} className="text-accent" aria-hidden="true" />Verified vendors. Protected payments.</p>
           </div>
         </div>
       </section>
@@ -117,7 +117,7 @@ function Home() {
           <div className="hero-panel flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
             <div>
               <h2 className="font-display text-3xl">Offer a service?</h2>
-              <p className="mt-2 max-w-lg text-sm leading-6 text-white/75">Manage bookings on a real calendar, get paid safely, and build a reputation that travels with you.</p>
+              <p className="mt-2 max-w-lg text-sm leading-6 text-snow/75">Manage bookings on a real calendar, get paid safely, and build a reputation that travels with you.</p>
             </div>
             <Link to="/register?role=vendor" className="button button--accent">Become a vendor</Link>
           </div>

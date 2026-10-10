@@ -4,6 +4,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 import EmailVerificationBanner from "./EmailVerificationBanner";
+import ThemeToggle from "./ThemeToggle";
 
 const navClass = ({ isActive }) => `site-nav__link${isActive ? " site-nav__link--active" : ""}`;
 const mobileClass = ({ isActive }) => `mobile-nav__link${isActive ? " mobile-nav__link--active" : ""}`;
@@ -44,6 +45,7 @@ function AppShell({ children }) {
             )}
           </nav>
           <div className="site-header__actions">
+            <ThemeToggle />
             {user ? (
               <>
                 <NotificationBell />

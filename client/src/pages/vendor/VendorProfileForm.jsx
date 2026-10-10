@@ -46,7 +46,7 @@ function StatusBanner({ profile, request }) {
         {request.items?.length > 0 && (
           <ul className="mt-2 list-disc space-y-1 pl-7 text-sm">{request.items.map((key) => <li key={key}>{CHANGE_ITEMS[key] || key}</li>)}</ul>
         )}
-        {request.note && <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-sm"><span className="font-medium">Note:</span> {request.note}</p>}
+        {request.note && <p className="mt-3 rounded-lg bg-white/60 px-3 py-2 text-sm"><span className="font-medium">Note:</span> {request.note}</p>}
         <p className="mt-3 text-xs opacity-80">Requested {new Date(request.at).toLocaleString()}. Fix the highlighted sections below, then press “Save & resubmit”.</p>
       </div>
     );

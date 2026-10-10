@@ -29,7 +29,7 @@ function RegisterPage() {
 
   return (
     <div className="auth-layout">
-      <aside className="auth-aside"><div><span className="eyebrow text-accent">A better local life</span><h2 className="mt-6 font-display text-6xl leading-none">Make room<br /><span className="text-accent">for good.</span></h2></div><p className="max-w-xs text-sm leading-6 text-white/60">Join a community built around craft, care, and the small businesses that make a place feel like home.</p></aside>
+      <aside className="auth-aside"><div><span className="eyebrow text-accent">A better local life</span><h2 className="mt-6 font-display text-6xl leading-none">Make room<br /><span className="text-accent">for good.</span></h2></div><p className="max-w-xs text-sm leading-6 text-snow/60">Join a community built around craft, care, and the small businesses that make a place feel like home.</p></aside>
       <div className="auth-form">
       <p className="eyebrow">Begin here</p>
       <h1 className="mt-3 font-display text-4xl text-ink">Create an account</h1>
