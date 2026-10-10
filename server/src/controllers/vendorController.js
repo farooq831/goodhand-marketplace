@@ -73,4 +73,12 @@ async function removeTimeOff(req, res, next) {
   }
 }
 
-module.exports = { create, getOne, update, verify, requestChanges, getMine, addTimeOff, removeTimeOff };
+async function getMyStats(req, res, next) {
+  try {
+    res.json({ stats: await vendorService.getMyStats(req.user.id) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, getOne, update, verify, requestChanges, getMine, addTimeOff, removeTimeOff, getMyStats };

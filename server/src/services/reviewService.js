@@ -3,6 +3,7 @@ const Review = require("../models/Review");
 const VendorProfile = require("../models/VendorProfile");
 const ApiError = require("../utils/ApiError");
 const notificationService = require("./notificationService");
+const trustService = require("./trustService");
 
 async function createReview(userId, { bookingId, rating, comment }) {
   if (!bookingId || rating == null || !comment?.trim()) {
@@ -61,10 +62,12 @@ async function recomputeVendorRating(vendorId) {
     { $match: { vendorId, authorRole: "customer" } },
     { $group: { _id: null, average: { $avg: "$rating" }, count: { $sum: 1 } } },
   ]);
-  return VendorProfile.findByIdAndUpdate(vendorId, {
+  const updated = await VendorProfile.findByIdAndUpdate(vendorId, {
     avgRating: summary ? Math.round(summary.average * 100) / 100 : 0,
     reviewCount: summary?.count || 0,
   }, { new: true });
+  await trustService.recomputeTrustScore(vendorId);
+  return updated;
 }
 
 module.exports = { createReview, respondToReview, getVendorReviews, getCustomerReviews, recomputeVendorRating };

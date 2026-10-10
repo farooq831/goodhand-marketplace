@@ -4,6 +4,7 @@ const Booking = require("../models/Booking");
 const ApiError = require("../utils/ApiError");
 const { toUtcDay } = require("../utils/timeOff");
 const notificationService = require("./notificationService");
+const trustService = require("./trustService");
 
 const DOC_TYPES = ["cnic_front", "cnic_back", "business_proof", "other"];
 
@@ -172,6 +173,13 @@ async function updateProfile(profileId, requester, updates) {
   if (updates.cnicNumber !== undefined) profile.cnicNumber = normalizeCnic(updates.cnicNumber);
   if (updates.documents !== undefined) profile.documents = normalizeDocuments(updates.documents);
   if (updates.payoutMethod !== undefined) profile.payoutMethod = normalizePayoutMethod(updates.payoutMethod);
+  if (updates.portfolio !== undefined) {
+    if (!Array.isArray(updates.portfolio) || updates.portfolio.length > 12) throw new ApiError(400, "Portfolio can have up to 12 items");
+    profile.portfolio = updates.portfolio.map((item) => {
+      if (typeof item?.url !== "string" || !/^https?:\/\//.test(item.url)) throw new ApiError(400, "Each portfolio item needs a valid image URL");
+      return { url: item.url, caption: String(item.caption || "").trim().slice(0, 120) };
+    });
+  }
 
   // The vendor saving their profile after the admin asked for changes is
   // the resubmission — no separate step to forget. It goes back into the
@@ -209,6 +217,7 @@ async function verifyVendor(profileId, requester, note = "") {
   profile.reviewHistory.push({ action: "approved", by: requester?.id, note: String(note || "").trim() });
   await setVerified(profile, true);
   await profile.save();
+  await trustService.recomputeTrustScore(profile._id);
 
   await notificationService
     .createNotification(profile.userId, "vendor_approved", { vendorProfileId: profile._id, businessName: profile.businessName })
@@ -246,6 +255,47 @@ async function requestChanges(profileId, requester, { items = [], note = "" } = 
     })
     .catch((err) => console.error("Notification failed:", err.message));
   return profile;
+}
+
+// --- Provider analytics -----------------------------------------------------
+
+async function getMyStats(userId) {
+  const profile = await myProfileOrThrow(userId);
+  const Listing = require("../models/Listing");
+  const Payment = require("../models/Payment");
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+
+  const [listingAgg, statusCounts, bookingIds] = await Promise.all([
+    Listing.aggregate([{ $match: { vendorId: profile._id } }, { $group: { _id: null, views: { $sum: "$views" }, total: { $sum: 1 }, active: { $sum: { $cond: ["$isActive", 1, 0] } } } }]),
+    Booking.aggregate([{ $match: { vendorId: profile._id } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
+    Booking.find({ vendorId: profile._id }).distinct("_id"),
+  ]);
+  const earned = await Payment.aggregate([
+    { $match: { bookingId: { $in: bookingIds }, status: "released", releasedAt: { $gte: monthStart } } },
+    { $group: { _id: null, net: { $sum: { $subtract: ["$amount", "$commissionAmount"] } } } },
+  ]);
+  const count = (s) => statusCounts.find((r) => r._id === s)?.n || 0;
+  const requests = statusCounts.reduce((sum, r) => sum + r.n, 0);
+  const accepted = count("accepted") + count("submitted") + count("completed") + count("disputed");
+  const answered = accepted + count("declined");
+  const settled = count("completed") + count("cancelled") + count("disputed");
+  const views = listingAgg[0]?.views || 0;
+  return {
+    views,
+    listings: listingAgg[0]?.total || 0,
+    activeListings: listingAgg[0]?.active || 0,
+    requests,
+    conversionRate: views ? Math.round((requests / views) * 1000) / 10 : null, // % of views that became a request
+    acceptanceRate: answered ? Math.round((accepted / answered) * 100) : null,
+    completionRate: settled ? Math.round((count("completed") / settled) * 100) : null,
+    pending: count("pending"),
+    trustScore: profile.trustScore,
+    avgRating: profile.avgRating,
+    reviewCount: profile.reviewCount,
+    earnedThisMonth: Math.round((earned[0]?.net || 0) * 100) / 100,
+  };
 }
 
 // --- Time off -------------------------------------------------------------
@@ -338,6 +388,7 @@ module.exports = {
   getVerificationQueue,
   backfillVerification,
   addTimeOff,
+  getMyStats,
   removeTimeOff,
   CHANGE_ITEMS,
 };

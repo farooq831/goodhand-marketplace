@@ -3,6 +3,7 @@ const Listing = require("../models/Listing");
 const VendorProfile = require("../models/VendorProfile");
 const ApiError = require("../utils/ApiError");
 const { blockingEntry } = require("../utils/timeOff");
+const trustService = require("./trustService");
 const { addMinutes, doRangesOverlap } = require("../utils/timeSlots");
 const { resolveBookingRequesterRole } = require("../utils/bookingAccess");
 const { getIO } = require("../sockets");
@@ -76,6 +77,7 @@ async function createBooking(customerId, { listingId, date, startTime, ...detail
     statusHistory: [{ status: "pending", changedAt: new Date(), changedBy: customerId }],
   });
 
+  await trustService.recomputeTrustScore(listing.vendorId._id);
   await notificationService
     .createNotification(listing.vendorId.userId, "booking_request", { bookingId: booking._id })
     .catch((err) => console.error("Notification failed:", err.message));
@@ -296,6 +298,7 @@ async function updateBookingStatus(bookingId, requester, targetStatus, { files =
     files: deliveredFiles,
   });
   await booking.save();
+  await trustService.recomputeTrustScore(booking.vendorId);
 
   // Design.md §3.1: checkout happens right after picking a slot, before
   // the vendor has responded — so a held payment can exist even at

@@ -59,6 +59,18 @@ async function markPayoutPaid(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function getListings(req, res, next) {
+  try { res.json(await require("../services/listingService").adminListListings(req.query)); } catch (err) { next(err); }
+}
+
+async function moderateListing(req, res, next) {
+  try {
+    const listing = await require("../services/listingService").moderateListing(req.user, req.params.id, req.body || {});
+    await auditService.record("admin.listing_" + req.body?.action, { actor: req.user, targetType: "listing", targetId: listing._id, details: { title: listing.title, reason: req.body?.reason, days: req.body?.days }, req });
+    res.json({ listing });
+  } catch (err) { next(err); }
+}
+
 async function getAuditLog(req, res, next) {
   try { res.json(await auditService.getAuditLog(req.query)); } catch (err) { next(err); }
 }
@@ -67,4 +79,4 @@ async function getSecurity(req, res, next) {
   try { res.json(await auditService.getSuspiciousActivity()); } catch (err) { next(err); }
 }
 
-module.exports = { getPendingVendors, getDisputes, resolveDispute, getAnalytics, setUserStatus, getUsers, getPendingPayouts, getPayoutHistory, markPayoutPaid, getAuditLog, getSecurity };
+module.exports = { getPendingVendors, getDisputes, resolveDispute, getAnalytics, setUserStatus, getUsers, getPendingPayouts, getPayoutHistory, markPayoutPaid, getAuditLog, getSecurity, getListings, moderateListing };

@@ -21,6 +21,12 @@ async function getMine(req, res, next) {
 async function getOne(req, res, next) {
   try {
     const booking = await bookingService.getBookingById(req.params.id, req.user);
+    // Vendors (and admins) see how reliable this customer has been.
+    if (req.user.role !== "customer") {
+      const body = booking.toObject();
+      body.customerStats = await require("../services/trustService").customerStats(booking.customerId._id || booking.customerId);
+      return res.json({ booking: body });
+    }
     res.json({ booking });
   } catch (err) {
     next(err);

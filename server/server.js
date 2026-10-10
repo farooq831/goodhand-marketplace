@@ -143,6 +143,8 @@ connectDB().then(async () => {
     console.log(`Server running on port ${PORT}`);
   });
   if (RUN_JOBS) {
+    // Fill in real trust scores for existing vendors without blocking startup.
+    require("./src/services/trustService").recomputeAll().catch((err) => console.error("Trust score backfill failed:", err.message));
     startPaymentReleaseJob();
     require("./src/jobs/bookingReminders").startBookingReminderJob();
   }

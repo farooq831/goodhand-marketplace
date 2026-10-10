@@ -38,6 +38,9 @@ const userSchema = new mongoose.Schema(
     emailVerifyExpires: { type: Date, default: null, select: false },
     passwordResetTokenHash: { type: String, default: null, select: false },
     passwordResetExpires: { type: Date, default: null, select: false },
+    // Customer shortlists.
+    savedListings: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Listing" }], default: [], select: false },
+    savedVendors: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "VendorProfile" }], default: [], select: false },
     // Browsers/devices this account has signed in from (auditService.trackSignIn).
     knownDevices: {
       type: [{ key: String, label: String, ip: String, firstSeenAt: Date, lastSeenAt: Date, _id: false }],

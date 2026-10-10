@@ -31,7 +31,9 @@ async function createListing(vendorProfile, data) {
   return Listing.create(payload);
 }
 
-const PUBLIC_VENDOR_FIELDS = "userId businessName avgRating reviewCount isVerified serviceArea.city";
+const PUBLIC_VENDOR_FIELDS = "userId businessName avgRating reviewCount isVerified serviceArea.city trustScore";
+// Vendor fields shown on listing cards in search results.
+const LIST_VENDOR_FIELDS = "businessName avgRating reviewCount serviceArea.city trustScore";
 
 // Public listing pages are visible once the listing is active AND its
 // vendor is verified; the owner (or an admin) can always see it — e.g.
@@ -47,6 +49,65 @@ async function getListingForOwnerOrPublic(id, requester) {
     throw new ApiError(404, "Listing not found");
   }
 
+  // Vendor analytics: count views by anyone but the owner. Fire-and-forget
+  // atomic increment — never slows down or fails the page.
+  if (!isOwner && requester?.role !== "admin") {
+    Listing.updateOne({ _id: listing._id }, { $inc: { views: 1 } }).catch(() => {});
+  }
+
+  return listing;
+}
+
+// --- Admin moderation & featured placements -------------------------------
+
+async function adminListListings({ q, status, page = 1, limit = 25 } = {}) {
+  const filter = {};
+  if (status === "hidden") filter["moderation.hidden"] = true;
+  else if (status === "featured") filter.featuredUntil = { $gt: new Date() };
+  else if (status === "active") filter.isActive = true;
+  if (typeof q === "string" && q.trim()) filter.title = new RegExp(escapeRegex(q.trim()), "i");
+  const size = Math.min(100, Math.max(1, Number(limit) || 25));
+  const pageNum = Math.max(1, Number(page) || 1);
+  const [listings, total] = await Promise.all([
+    Listing.find(filter).sort({ createdAt: -1 }).skip((pageNum - 1) * size).limit(size).populate("vendorId", "businessName isVerified trustScore userId"),
+    Listing.countDocuments(filter),
+  ]);
+  return { listings, total, page: pageNum, limit: size };
+}
+
+async function moderateListing(admin, id, { action, reason = "", days } = {}) {
+  const listing = await Listing.findById(id).populate("vendorId", "userId businessName");
+  if (!listing) throw new ApiError(404, "Listing not found");
+  const note = String(reason || "").trim();
+
+  if (action === "hide") {
+    if (!note) throw new ApiError(400, "Give the vendor a reason for hiding this listing");
+    listing.isActive = false;
+    listing.featuredUntil = null;
+    listing.moderation = { hidden: true, reason: note, at: new Date(), by: admin.id };
+  } else if (action === "unhide") {
+    listing.isActive = true;
+    listing.moderation = { hidden: false, reason: "", at: new Date(), by: admin.id };
+  } else if (action === "feature") {
+    const n = Number(days);
+    if (![7, 14, 30, 90].includes(n)) throw new ApiError(400, "Feature for 7, 14, 30 or 90 days");
+    if (!listing.isActive) throw new ApiError(400, "Only active listings can be featured");
+    // Extending an active placement adds to its end date.
+    const from = listing.featuredUntil && listing.featuredUntil > new Date() ? listing.featuredUntil : new Date();
+    listing.featuredUntil = new Date(from.getTime() + n * 24 * 60 * 60 * 1000);
+  } else if (action === "unfeature") {
+    listing.featuredUntil = null;
+  } else {
+    throw new ApiError(400, "Unknown moderation action");
+  }
+  await listing.save();
+
+  if (action === "hide" || action === "unhide") {
+    const notificationService = require("./notificationService");
+    await notificationService
+      .createNotification(listing.vendorId.userId, action === "hide" ? "listing_hidden" : "listing_restored", { listingId: listing._id, title: listing.title, reason: note })
+      .catch((err) => console.error("Notification failed:", err.message));
+  }
   return listing;
 }
 
@@ -58,7 +119,13 @@ async function updateListing(id, requester, updates) {
   for (const field of WRITABLE_FIELDS) {
     if (updates[field] !== undefined) listing[field] = updates[field];
   }
-  if (updates.isActive !== undefined) listing.isActive = updates.isActive;
+  if (updates.isActive !== undefined) {
+    // An admin-hidden listing stays hidden until an admin restores it.
+    if (updates.isActive && listing.moderation?.hidden && requester.role !== "admin") {
+      throw new ApiError(403, `This listing was hidden by our team: ${listing.moderation.reason || "contact support"}`);
+    }
+    listing.isActive = updates.isActive;
+  }
 
   await listing.save();
   return listing;
@@ -165,7 +232,7 @@ async function searchListings(query) {
     radiusKm,
     date,
     vendorId,
-    sort = "newest",
+    sort = "recommended",
     page = 1,
     limit = 12,
   } = query;
@@ -244,13 +311,22 @@ async function searchListings(query) {
   const pageNum = Math.max(1, Number(page) || 1);
   const pageSize = Math.min(50, Math.max(1, Number(limit) || 12));
 
-  if (sort === "rating") {
+  // "recommended" (the default) and "rating" rank by vendor-level fields, so
+  // they sort a bounded candidate set in memory — the same tradeoff as before.
+  if (sort === "rating" || sort === "recommended" || !sort) {
     const candidates = await Listing.find(listingFilter)
       .sort({ createdAt: -1 })
       .limit(MAX_RATING_SORT_CANDIDATES)
-      .populate("vendorId", "businessName avgRating reviewCount serviceArea.city");
+      .populate("vendorId", LIST_VENDOR_FIELDS);
 
-    candidates.sort((a, b) => (b.vendorId?.avgRating || 0) - (a.vendorId?.avgRating || 0));
+    if (sort === "rating") {
+      candidates.sort((a, b) => (b.vendorId?.avgRating || 0) - (a.vendorId?.avgRating || 0));
+    } else {
+      // Paid featured placements first, then the provider trust score.
+      const now = Date.now();
+      const featured = (l) => (l.featuredUntil && l.featuredUntil.getTime() > now ? 1 : 0);
+      candidates.sort((a, b) => featured(b) - featured(a) || (b.vendorId?.trustScore ?? 60) - (a.vendorId?.trustScore ?? 60) || b.createdAt - a.createdAt);
+    }
     const start = (pageNum - 1) * pageSize;
     return {
       listings: candidates.slice(start, start + pageSize),
@@ -268,7 +344,7 @@ async function searchListings(query) {
       .sort(sortSpec)
       .skip((pageNum - 1) * pageSize)
       .limit(pageSize)
-      .populate("vendorId", "businessName avgRating reviewCount serviceArea.city"),
+      .populate("vendorId", LIST_VENDOR_FIELDS),
     Listing.countDocuments(listingFilter),
   ]);
 
@@ -282,5 +358,7 @@ module.exports = {
   deleteListing,
   getMyListings,
   getAvailability,
+  adminListListings,
+  moderateListing,
   searchListings,
 };

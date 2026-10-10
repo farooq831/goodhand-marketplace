@@ -95,6 +95,14 @@ const vendorProfileSchema = new mongoose.Schema(
       default: [],
     },
 
+    // Public gallery of past work (shown on the vendor profile).
+    portfolio: {
+      type: [{ url: { type: String, required: true }, caption: { type: String, trim: true, maxlength: 120, default: "" } }],
+      default: [],
+    },
+    // 0-100, maintained by trustService — drives "Recommended" ranking.
+    trustScore: { type: Number, default: 60, min: 0, max: 100 },
+
     isVerified: { type: Boolean, default: false },
     avgRating: { type: Number, default: 0 },
     reviewCount: { type: Number, default: 0 },
@@ -106,6 +114,7 @@ vendorProfileSchema.index({ "serviceArea.location": "2dsphere" });
 vendorProfileSchema.index({ category: 1 });
 // Search allowlist (verified, rating filter) and the admin verification queue.
 vendorProfileSchema.index({ isVerified: 1, avgRating: -1 });
+vendorProfileSchema.index({ isVerified: 1, trustScore: -1 });
 vendorProfileSchema.index({ verificationStatus: 1, createdAt: 1 });
 
 module.exports = mongoose.model("VendorProfile", vendorProfileSchema);

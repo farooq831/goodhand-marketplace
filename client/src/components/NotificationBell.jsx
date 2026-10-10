@@ -29,6 +29,8 @@ const LABELS = {
   payout_sent: "Payout sent to your account",
   booking_reminder: "Upcoming booking reminder",
   new_sign_in: "New sign-in to your account",
+  listing_hidden: "A listing was hidden by our team",
+  listing_restored: "Your listing is visible again",
 };
 
 // Non-booking notifications that still have an obvious place to go.
@@ -39,6 +41,8 @@ const LINKS = {
   vendor_resubmitted: "/dashboard/admin/vendors",
   payout_sent: "/dashboard/vendor/earnings",
   new_sign_in: "/dashboard/account",
+  listing_hidden: "/dashboard/vendor/listings",
+  listing_restored: "/dashboard/vendor/listings",
 };
 
 const labelFor = (type) => LABELS[type] || type.replaceAll("_", " ");

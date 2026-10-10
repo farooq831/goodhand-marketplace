@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const Booking = require("../models/Booking");
 const paymentService = require("../services/paymentService");
 const bookingService = require("../services/bookingService");
+const trustService = require("../services/trustService");
 
 // Architecture.md §7 step 3: "a scheduled job captures the payment and
 // marks it released" once a booking has been completed for at least this
@@ -74,6 +75,10 @@ function startPaymentReleaseJob() {
   cron.schedule("0 * * * *", async () => {
     await autoCompleteStaleDeliveries().catch((err) => console.error("Auto-complete job crashed:", err));
     await releaseEligiblePayments().catch((err) => console.error("Payment release job crashed:", err));
+  });
+  // Nightly: refresh every trust score (response rates drift as requests age).
+  cron.schedule("30 3 * * *", () => {
+    trustService.recomputeAll().catch((err) => console.error("Trust score job crashed:", err));
   });
 }
 

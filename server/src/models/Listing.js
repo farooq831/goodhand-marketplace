@@ -23,6 +23,17 @@ const listingSchema = new mongoose.Schema(
     // cleaning, home tuition) makes checkout collect the service address.
     serviceLocation: { type: String, enum: ["customer", "vendor", "online"], default: "customer" },
     isActive: { type: Boolean, default: true },
+    // Paid placement: shown first with a "Featured" badge until this date.
+    featuredUntil: { type: Date, default: null },
+    // Detail-page views by anyone other than the owner (vendor analytics).
+    views: { type: Number, default: 0 },
+    // Set when an admin hides a listing; the vendor can't re-activate it.
+    moderation: {
+      hidden: { type: Boolean, default: false },
+      reason: { type: String, default: "" },
+      at: { type: Date, default: null },
+      by: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
