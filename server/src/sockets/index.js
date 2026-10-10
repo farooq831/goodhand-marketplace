@@ -44,7 +44,7 @@ function initSocket(httpServer) {
       const token = socket.handshake.auth?.token;
       if (!token) throw new Error("Missing auth token");
 
-      socket.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+      socket.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET, { algorithms: ["HS256"] });
       next();
     } catch (err) {
       next(new Error("Socket authentication failed"));

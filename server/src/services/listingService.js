@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Listing = require("../models/Listing");
 const VendorProfile = require("../models/VendorProfile");
 const Booking = require("../models/Booking");
@@ -188,6 +189,12 @@ async function searchListings(query) {
   }
 
   if (vendorId) {
+    // Same visibility rule as the general search: only approved vendors'
+    // listings are public. This branch used to skip it, so anyone with an
+    // unapproved vendor's id could list that vendor's services.
+    if (typeof vendorId !== "string" || !mongoose.isValidObjectId(vendorId)) throw new ApiError(400, "Invalid vendorId");
+    const approved = await VendorProfile.exists({ _id: vendorId, isVerified: true });
+    if (!approved) return { listings: [], page: 1, limit: Number(limit) || 12, total: 0 };
     listingFilter.vendorId = vendorId;
     if (availableDay) {
       const away = await VendorProfile.exists({ _id: vendorId, timeOff: { $elemMatch: { from: { $lte: availableDay }, to: { $gte: availableDay } } } });

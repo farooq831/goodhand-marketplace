@@ -8,6 +8,7 @@ import {
   ListChecks,
   MessageSquare,
   Scale,
+  ShieldAlert,
   Search,
   Store,
   UserCog,
@@ -37,6 +38,7 @@ export const NAV_BY_ROLE = {
     { to: "/dashboard/admin/disputes", title: "Dispute queue", desc: "Resolve held payments.", icon: Scale },
     { to: "/dashboard/admin/payouts", title: "Payouts", desc: "Record money sent to vendors.", icon: Banknote },
     { to: "/dashboard/admin/analytics", title: "Analytics", desc: "Marketplace GMV and volume.", icon: BarChart3 },
+    { to: "/dashboard/admin/security", title: "Security & audit", desc: "Failed logins and every admin action.", icon: ShieldAlert },
     { to: "/dashboard/admin/users", title: "Account status", desc: "Suspend or reactivate accounts.", icon: Users },
   ],
 };

@@ -1,6 +1,7 @@
 const vendorService = require("../services/vendorService");
 const adminService = require("../services/adminService");
 const payoutService = require("../services/payoutService");
+const auditService = require("../services/auditService");
 
 async function getPendingVendors(req, res, next) {
   try {
@@ -16,7 +17,9 @@ async function getDisputes(req, res, next) {
 
 async function resolveDispute(req, res, next) {
   try {
-    res.json(await adminService.resolveDispute(req.params.id, req.user, req.body.action, req.body.note));
+    const result = await adminService.resolveDispute(req.params.id, req.user, req.body.action, req.body.note);
+    await auditService.record("admin.dispute_resolved", { actor: req.user, targetType: "booking", targetId: req.params.id, details: { action: req.body.action, note: req.body.note }, req });
+    res.json(result);
   } catch (err) { next(err); }
 }
 
@@ -25,7 +28,11 @@ async function getAnalytics(req, res, next) {
 }
 
 async function setUserStatus(req, res, next) {
-  try { res.json({ user: await adminService.setUserStatus(req.params.id, req.body.status) }); } catch (err) { next(err); }
+  try {
+    const user = await adminService.setUserStatus(req.user, req.params.id, req.body.status);
+    await auditService.record(user.status === "suspended" ? "admin.user_suspended" : "admin.user_reactivated", { actor: req.user, targetType: "user", targetId: user._id, details: { email: user.email }, req });
+    res.json({ user });
+  } catch (err) { next(err); }
 }
 
 async function getUsers(req, res, next) {
@@ -45,7 +52,19 @@ async function getPayoutHistory(req, res, next) {
 }
 
 async function markPayoutPaid(req, res, next) {
-  try { res.json({ payout: await payoutService.markPaid(req.user, req.body || {}) }); } catch (err) { next(err); }
+  try {
+    const payout = await payoutService.markPaid(req.user, req.body || {});
+    await auditService.record("admin.payout_marked_paid", { actor: req.user, targetType: "vendor", targetId: payout.vendorId, details: { total: payout.total, count: payout.count, reference: payout.reference }, req });
+    res.json({ payout });
+  } catch (err) { next(err); }
 }
 
-module.exports = { getPendingVendors, getDisputes, resolveDispute, getAnalytics, setUserStatus, getUsers, getPendingPayouts, getPayoutHistory, markPayoutPaid };
+async function getAuditLog(req, res, next) {
+  try { res.json(await auditService.getAuditLog(req.query)); } catch (err) { next(err); }
+}
+
+async function getSecurity(req, res, next) {
+  try { res.json(await auditService.getSuspiciousActivity()); } catch (err) { next(err); }
+}
+
+module.exports = { getPendingVendors, getDisputes, resolveDispute, getAnalytics, setUserStatus, getUsers, getPendingPayouts, getPayoutHistory, markPayoutPaid, getAuditLog, getSecurity };

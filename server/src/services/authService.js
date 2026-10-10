@@ -70,7 +70,7 @@ async function refresh(refreshToken) {
 
   let payload;
   try {
-    payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ["HS256"] });
   } catch (err) {
     throw new ApiError(401, "Invalid or expired refresh token");
   }
@@ -182,6 +182,7 @@ async function resetPassword(token, password) {
   // password, their refresh token stops working now.
   user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
+  return user;
 }
 
 // Accounts created before email verification existed are grandfathered in.

@@ -1,4 +1,5 @@
 const vendorService = require("../services/vendorService");
+const auditService = require("../services/auditService");
 
 async function create(req, res, next) {
   try {
@@ -30,6 +31,7 @@ async function update(req, res, next) {
 async function verify(req, res, next) {
   try {
     const profile = await vendorService.verifyVendor(req.params.id, req.user, req.body?.note);
+    await auditService.record("admin.vendor_approved", { actor: req.user, targetType: "vendor", targetId: profile._id, details: { businessName: profile.businessName }, req });
     res.json({ vendorProfile: profile });
   } catch (err) {
     next(err);
@@ -39,6 +41,7 @@ async function verify(req, res, next) {
 async function requestChanges(req, res, next) {
   try {
     const profile = await vendorService.requestChanges(req.params.id, req.user, req.body || {});
+    await auditService.record("admin.vendor_changes_requested", { actor: req.user, targetType: "vendor", targetId: profile._id, details: { items: req.body?.items, note: req.body?.note }, req });
     res.json({ vendorProfile: profile });
   } catch (err) {
     next(err);

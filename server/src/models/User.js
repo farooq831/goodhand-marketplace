@@ -38,11 +38,17 @@ const userSchema = new mongoose.Schema(
     emailVerifyExpires: { type: Date, default: null, select: false },
     passwordResetTokenHash: { type: String, default: null, select: false },
     passwordResetExpires: { type: Date, default: null, select: false },
+    // Browsers/devices this account has signed in from (auditService.trackSignIn).
+    knownDevices: {
+      type: [{ key: String, label: String, ip: String, firstSeenAt: Date, lastSeenAt: Date, _id: false }],
+      default: [],
+      select: false,
+    },
   },
   { timestamps: true }
 );
 
-const PRIVATE_FIELDS = ["passwordHash", "__v", "tokenVersion", "emailVerifyTokenHash", "emailVerifyExpires", "passwordResetTokenHash", "passwordResetExpires"];
+const PRIVATE_FIELDS = ["passwordHash", "__v", "tokenVersion", "emailVerifyTokenHash", "emailVerifyExpires", "passwordResetTokenHash", "passwordResetExpires", "knownDevices"];
 
 userSchema.set("toJSON", {
   transform: (_doc, ret) => {

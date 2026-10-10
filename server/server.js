@@ -60,6 +60,7 @@ app.post(
 );
 
 app.use(express.json({ limit: "10mb" }));
+app.use(require("./src/middleware/sanitizeRequest"));
 
 // Dev-only local upload fallback (see uploadController). Never active in
 // production, where uploads go to Cloudinary.

@@ -13,7 +13,7 @@ function authenticate(req, res, next) {
   }
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    req.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET, { algorithms: ["HS256"] });
     next();
   } catch (err) {
     next(new ApiError(401, "Invalid or expired token"));

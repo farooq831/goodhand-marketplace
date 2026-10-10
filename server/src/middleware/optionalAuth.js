@@ -10,7 +10,7 @@ function optionalAuth(req, res, next) {
 
   if (token) {
     try {
-      req.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+      req.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET, { algorithms: ["HS256"] });
     } catch {
       // invalid/expired — treat the request as anonymous rather than failing
     }

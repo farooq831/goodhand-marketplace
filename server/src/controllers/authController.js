@@ -1,4 +1,5 @@
 const authService = require("../services/authService");
+const auditService = require("../services/auditService");
 
 const REFRESH_COOKIE_NAME = "refreshToken";
 // Scoped to /api/auth so the refresh token isn't sent on every request,
@@ -24,6 +25,8 @@ function sendAuthResponse(res, statusCode, { user, accessToken, refreshToken }) 
 async function register(req, res, next) {
   try {
     const result = await authService.register(req.body);
+    await auditService.record("auth.registered", { actor: result.user, details: { role: result.user.role }, req });
+    await auditService.trackSignIn(result.user, req);
     sendAuthResponse(res, 201, result);
   } catch (err) {
     next(err);
@@ -33,8 +36,14 @@ async function register(req, res, next) {
 async function login(req, res, next) {
   try {
     const result = await authService.login(req.body);
+    await auditService.record("auth.login", { actor: result.user, req });
+    await auditService.trackSignIn(result.user, req);
     sendAuthResponse(res, 200, result);
   } catch (err) {
+    // Failed attempts are what the admin Security page watches for.
+    if (err.statusCode === 401 || err.statusCode === 403) {
+      await auditService.record("auth.login_failed", { actorEmail: String(req.body?.email || "").toLowerCase().slice(0, 200), details: { reason: err.message }, req });
+    }
     next(err);
   }
 }
@@ -42,6 +51,8 @@ async function login(req, res, next) {
 async function googleLogin(req, res, next) {
   try {
     const result = await authService.loginWithGoogle(req.body.credential);
+    await auditService.record("auth.login", { actor: result.user, details: { method: "google" }, req });
+    await auditService.trackSignIn(result.user, req);
     sendAuthResponse(res, 200, result);
   } catch (err) {
     next(err);
@@ -68,6 +79,7 @@ function logout(req, res) {
 async function verifyEmail(req, res, next) {
   try {
     const user = await authService.verifyEmail(req.body?.token);
+    await auditService.record("auth.email_verified", { actor: user, req });
     res.json({ user });
   } catch (err) {
     next(err);
@@ -94,7 +106,8 @@ async function forgotPassword(req, res, next) {
 
 async function resetPassword(req, res, next) {
   try {
-    await authService.resetPassword(req.body?.token, req.body?.password);
+    const user = await authService.resetPassword(req.body?.token, req.body?.password);
+    await auditService.record("auth.password_reset", { actor: user, req });
     // Every old session was just revoked; drop this browser's cookie too.
     const { maxAge, ...clearOptions } = REFRESH_COOKIE_OPTIONS;
     res.clearCookie(REFRESH_COOKIE_NAME, clearOptions);

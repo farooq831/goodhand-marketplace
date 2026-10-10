@@ -37,6 +37,7 @@ const subjects = {
   vendor_resubmitted: "A vendor updated their profile for review",
   payout_sent: "Your Goodhand payout has been sent",
   booking_reminder: "Reminder: you have a booking coming up",
+  new_sign_in: "New sign-in to your Goodhand account",
 };
 
 // Readable bodies for the messages people act on. Anything not listed
@@ -68,6 +69,12 @@ const bodies = {
     "",
     "Depending on your bank or wallet it can take up to 1–2 working days to appear.",
     `See your earnings: ${appUrl("/dashboard/vendor/earnings")}`,
+  ],
+  new_sign_in: ({ device, ip, at }) => [
+    `Your Goodhand account was just signed in to from a new device: ${device} (IP ${ip}) at ${new Date(at).toUTCString()}.`,
+    "",
+    "If this was you, there's nothing to do.",
+    `If it wasn't, reset your password now — that signs out every other device: ${appUrl("/forgot-password")}`,
   ],
   booking_reminder: ({ title, date, startTime, when, address, bookingId }) => [
     `This is a reminder that "${title}" is ${when === "soon" ? "starting in about 2 hours" : "coming up"} — ${date} at ${startTime}.`,

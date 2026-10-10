@@ -15,5 +15,7 @@ router.get("/users", adminController.getUsers);
 router.get("/payouts", adminController.getPendingPayouts);
 router.get("/payouts/history", adminController.getPayoutHistory);
 router.post("/payouts/mark-paid", adminController.markPayoutPaid);
+router.get("/audit-log", adminController.getAuditLog);
+router.get("/security", adminController.getSecurity);
 
 module.exports = router;

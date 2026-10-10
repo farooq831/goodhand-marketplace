@@ -21,6 +21,8 @@ const EXTENSIONS = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
 const cloudinaryConfigured = () =>
   process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
 
@@ -47,8 +49,14 @@ function saveLocally(req, dataUrl, kind) {
 async function upload(req, res, next) {
   try {
     const { dataUrl, kind = "listing" } = req.body;
-    if (!FOLDERS[kind]) throw new ApiError(400, "Invalid upload kind");
-    if (!dataUrl?.startsWith("data:")) throw new ApiError(400, "A file data URL is required");
+    if (typeof kind !== "string" || !FOLDERS[kind]) throw new ApiError(400, "Invalid upload kind");
+    if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) throw new ApiError(400, "A file data URL is required");
+    // One allowlist for both storage paths — the Cloudinary path used to
+    // accept any type (HTML, scripts, executables) as a "raw" upload.
+    const mime = /^data:([\w/.+-]+);base64,/.exec(dataUrl)?.[1];
+    if (!mime || !EXTENSIONS[mime]) throw new ApiError(400, "Unsupported file type — use an image, PDF, or Word document");
+    // base64 is ~4/3 of the original size.
+    if ((dataUrl.length - dataUrl.indexOf(",") - 1) * 0.75 > MAX_UPLOAD_BYTES) throw new ApiError(413, "File is too large — the limit is 8 MB");
 
     if (!cloudinaryConfigured()) {
       if (process.env.NODE_ENV === "production") throw new ApiError(503, "Cloudinary upload is not configured");

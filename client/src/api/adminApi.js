@@ -27,6 +27,16 @@ export async function setUserStatus(id, status) {
 
 // Vendor payouts (manual in v1): what's owed per vendor, the paid history,
 // and recording a transfer that was made outside the app.
+export async function getAuditLog(params = {}) {
+  const { data } = await apiClient.get("/admin/audit-log", { params });
+  return data; // { entries, total, page, limit }
+}
+
+export async function getSecurityReport() {
+  const { data } = await apiClient.get("/admin/security");
+  return data; // { byEmail, byIp, newDevices }
+}
+
 export async function getPendingPayouts() {
   const { data } = await apiClient.get("/admin/payouts");
   return data.payouts;

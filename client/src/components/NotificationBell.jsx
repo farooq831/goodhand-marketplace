@@ -28,6 +28,7 @@ const LABELS = {
   vendor_resubmitted: "Vendor resubmitted for review",
   payout_sent: "Payout sent to your account",
   booking_reminder: "Upcoming booking reminder",
+  new_sign_in: "New sign-in to your account",
 };
 
 // Non-booking notifications that still have an obvious place to go.
@@ -37,6 +38,7 @@ const LINKS = {
   vendor_submitted: "/dashboard/admin/vendors",
   vendor_resubmitted: "/dashboard/admin/vendors",
   payout_sent: "/dashboard/vendor/earnings",
+  new_sign_in: "/dashboard/account",
 };
 
 const labelFor = (type) => LABELS[type] || type.replaceAll("_", " ");

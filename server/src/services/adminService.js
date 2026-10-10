@@ -118,8 +118,13 @@ async function getAnalytics() {
   };
 }
 
-async function setUserStatus(userId, status) {
+async function setUserStatus(requester, userId, status) {
   if (!["active", "suspended"].includes(status)) throw new ApiError(400, "Status must be active or suspended");
+  if (String(userId) === String(requester.id)) throw new ApiError(400, "You can't change your own account status");
+  const target = await User.findById(userId).select("role");
+  if (!target) throw new ApiError(404, "User not found");
+  // Admin accounts are managed outside the app, not by other admins.
+  if (target.role === "admin") throw new ApiError(403, "Admin accounts can't be suspended here");
   const user = await User.findByIdAndUpdate(userId, { status }, { new: true, runValidators: true });
   if (!user) throw new ApiError(404, "User not found");
   return user;
